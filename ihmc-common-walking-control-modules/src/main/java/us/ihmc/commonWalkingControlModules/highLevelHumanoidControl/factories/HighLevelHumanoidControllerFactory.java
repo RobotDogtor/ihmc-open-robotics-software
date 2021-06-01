@@ -27,6 +27,7 @@ import us.ihmc.commonWalkingControlModules.highLevelHumanoidControl.highLevelSta
 import us.ihmc.commonWalkingControlModules.highLevelHumanoidControl.highLevelStates.pushRecoveryController.PushRecoveryControllerParameters;
 import us.ihmc.commonWalkingControlModules.messageHandlers.WalkingMessageHandler;
 import us.ihmc.commonWalkingControlModules.momentumBasedController.HighLevelHumanoidControllerToolbox;
+import us.ihmc.commonWalkingControlModules.sensors.SixDOFForceTorqueSensorNameHolder;
 import us.ihmc.communication.ROS2Tools;
 import us.ihmc.communication.controllerAPI.CommandInputManager;
 import us.ihmc.communication.controllerAPI.MessageUnpackingTools;
@@ -111,6 +112,7 @@ public class HighLevelHumanoidControllerFactory implements CloseableAndDisposabl
 
    private final SideDependentList<String> footSensorNames;
    private final SideDependentList<String> wristSensorNames;
+   private final ArrayList<String> sixDOFForceTorqueSensorNames;
 
    private YoGraphicsListRegistry yoGraphicsListRegistry;
 
@@ -126,7 +128,36 @@ public class HighLevelHumanoidControllerFactory implements CloseableAndDisposabl
    private ConcurrentLinkedQueue<Command<?, ?>> controllerCommands;
 
    private HumanoidHighLevelControllerManager humanoidHighLevelControllerManager;
+   
+   private SixDOFForceTorqueSensorNameHolder sixDOFForceTorqueSensorNameHolder;
 
+   public HighLevelHumanoidControllerFactory(ContactableBodiesFactory<RobotSide> contactableBodiesFactory, SideDependentList<String> footForceSensorNames,
+									           SideDependentList<String> footContactSensorNames, SideDependentList<String> wristSensorNames,
+									           HighLevelControllerParameters highLevelControllerParameters,
+									           WalkingControllerParameters walkingControllerParameters, CoPTrajectoryParameters copTrajectoryParameters)
+   {
+	   this(contactableBodiesFactory, footForceSensorNames,footContactSensorNames, wristSensorNames, null,
+            highLevelControllerParameters, walkingControllerParameters, copTrajectoryParameters);
+   }
+   
+   public HighLevelHumanoidControllerFactory(ContactableBodiesFactory<RobotSide> contactableBodiesFactory, SideDependentList<String> footForceSensorNames,
+                                             SideDependentList<String> footContactSensorNames, SideDependentList<String> wristSensorNames,
+                                             ArrayList<String> sixDOFForceTorqueSensorNames,
+                                             HighLevelControllerParameters highLevelControllerParameters,
+                                             WalkingControllerParameters walkingControllerParameters,
+                                             CoPTrajectoryParameters copTrajectoryParameters)
+   {
+      this(contactableBodiesFactory,
+           footForceSensorNames,
+           footContactSensorNames,
+           wristSensorNames,
+           sixDOFForceTorqueSensorNames,
+           highLevelControllerParameters,
+           walkingControllerParameters,
+           copTrajectoryParameters,
+           new DefaultSplitFractionCalculatorParameters());
+   }
+   
    public HighLevelHumanoidControllerFactory(ContactableBodiesFactory<RobotSide> contactableBodiesFactory,
                                              SideDependentList<String> footForceSensorNames,
                                              SideDependentList<String> footContactSensorNames,
@@ -140,17 +171,19 @@ public class HighLevelHumanoidControllerFactory implements CloseableAndDisposabl
            footForceSensorNames,
            footContactSensorNames,
            wristSensorNames,
+           null,
            highLevelControllerParameters,
            walkingControllerParameters,
            pushRecoveryControllerParameters,
            copTrajectoryParameters,
-           new DefaultSplitFractionCalculatorParameters());
+           splitFractionCalculatorParameters);
    }
 
    public HighLevelHumanoidControllerFactory(ContactableBodiesFactory<RobotSide> contactableBodiesFactory,
                                              SideDependentList<String> footForceSensorNames,
                                              SideDependentList<String> footContactSensorNames,
                                              SideDependentList<String> wristSensorNames,
+                                             ArrayList<String> sixDOFForceTorqueSensorNames,
                                              HighLevelControllerParameters highLevelControllerParameters,
                                              WalkingControllerParameters walkingControllerParameters,
                                              PushRecoveryControllerParameters pushRecoveryControllerParameters,
@@ -163,6 +196,7 @@ public class HighLevelHumanoidControllerFactory implements CloseableAndDisposabl
       this.contactableBodiesFactory = contactableBodiesFactory;
       this.footSensorNames = footForceSensorNames;
       this.wristSensorNames = wristSensorNames;
+      this.sixDOFForceTorqueSensorNames = sixDOFForceTorqueSensorNames;
 
       commandInputManager = new CommandInputManager(ControllerAPIDefinition.getControllerSupportedCommands());
       try
@@ -527,24 +561,14 @@ public class HighLevelHumanoidControllerFactory implements CloseableAndDisposabl
 
       SideDependentList<FootSwitchInterface> footSwitches = createFootSwitches(feet, forceSensorDataHolder, totalRobotWeight, yoGraphicsListRegistry, registry);
       SideDependentList<ForceSensorDataReadOnly> wristForceSensors = createWristForceSensors(forceSensorDataHolder);
+      ArrayList<ForceSensorDataReadOnly> sixDOFForceTorqueSensors = createSixDOFForceTorqueSensors(forceSensorDataHolder);
 
       /////////////////////////////////////////////////////////////////////////////////////////////
       // Setup the HighLevelHumanoidControllerToolbox /////////////////////////////////////////////
       double omega0 = walkingControllerParameters.getOmega0();
-      controllerToolbox = new HighLevelHumanoidControllerToolbox(fullRobotModel,
-                                                                 centerOfMassStateProvider,
-                                                                 referenceFrames,
-                                                                 footSwitches,
-                                                                 wristForceSensors,
-                                                                 yoTime,
-                                                                 gravityZ,
-                                                                 omega0,
-                                                                 feet,
-                                                                 controlDT,
-                                                                 updatables,
-                                                                 contactablePlaneBodies,
-                                                                 yoGraphicsListRegistry,
-                                                                 jointsToIgnore);
+      controllerToolbox = new HighLevelHumanoidControllerToolbox(fullRobotModel, referenceFrames, footSwitches, wristForceSensors, sixDOFForceTorqueSensors, yoTime, gravityZ, omega0,
+                                                                 feet, controlDT, updatables, contactablePlaneBodies, yoGraphicsListRegistry, jointsToIgnore);
+      controllerToolbox.setSixDOFForceTorqueSensorNameHolder(sixDOFForceTorqueSensorNameHolder);
       controllerToolbox.attachControllerStateChangedListeners(controllerStateChangedListenersToAttach);
       attachControllerFailureListeners(controllerFailureListenersToAttach);
       if (createComponentBasedFootstepDataMessageGenerator)
@@ -640,6 +664,24 @@ public class HighLevelHumanoidControllerFactory implements CloseableAndDisposabl
          wristForceSensors.put(robotSide, wristForceSensor);
       }
       return wristForceSensors;
+   }
+   
+   private ArrayList<ForceSensorDataReadOnly> createSixDOFForceTorqueSensors(ForceSensorDataHolderReadOnly forceSensorDataHolder)
+   {
+      if (sixDOFForceTorqueSensorNames == null)
+         return null;
+
+      ArrayList<ForceSensorDataReadOnly> sixDOFForceTorqueSensors = new ArrayList<>();
+      for (String sixDOForceTorqueSensorName : sixDOFForceTorqueSensorNames)
+      {
+         if (sixDOForceTorqueSensorName == null)
+         {
+            return null;
+         }
+         ForceSensorDataReadOnly sixDOForceTorqueSensor = forceSensorDataHolder.getByName(sixDOForceTorqueSensorName);
+         sixDOFForceTorqueSensors.add(sixDOForceTorqueSensor);
+      }
+      return sixDOFForceTorqueSensors;
    }
 
    public void addUpdatable(Updatable updatable)
@@ -737,6 +779,11 @@ public class HighLevelHumanoidControllerFactory implements CloseableAndDisposabl
          humanoidHighLevelControllerManager.setListenToHighLevelStatePackets(isListening);
       else
          isListeningToHighLevelStatePackets = isListening;
+   }
+   
+   public void setSixDOFForceTorqueSensorNameHolder(SixDOFForceTorqueSensorNameHolder sixDOFForceTorqueSensorNameHolder)
+   {
+	   this.sixDOFForceTorqueSensorNameHolder = sixDOFForceTorqueSensorNameHolder;
    }
 
 }

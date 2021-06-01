@@ -67,7 +67,8 @@ public class SimpleAtlasFlatGroundWalkingTrack
                                     cheatWithGroundHeightAtForFootstep,
                                     model,
                                     walkingScriptParameters,
-                                    new SimpleWalkingControllerStateFactory());
+                                    new SimpleWalkingControllerStateFactory(),
+                                    null);
    }
 
 }
