@@ -51,6 +51,7 @@ abstract public class ROSAPISimulator
       simulationStarter.setRunMultiThreaded(true);
 
       HumanoidNetworkProcessorParameters networkProcessorParameters = new HumanoidNetworkProcessorParameters();
+      networkProcessorParameters.setROSLocalhostURI();
 
       PacketCommunicator rosAPI_communicator = PacketCommunicator.createIntraprocessPacketCommunicator(NetworkPorts.ROS_API_COMMUNICATOR, new IHMCCommunicationKryoNetClassList());
 
