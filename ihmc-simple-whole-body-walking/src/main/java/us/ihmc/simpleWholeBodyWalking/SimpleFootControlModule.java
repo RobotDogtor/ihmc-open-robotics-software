@@ -42,6 +42,7 @@ public class SimpleFootControlModule
          switch (this)
          {
             case FULL:
+            	return true;
             default:
                return false;
          }

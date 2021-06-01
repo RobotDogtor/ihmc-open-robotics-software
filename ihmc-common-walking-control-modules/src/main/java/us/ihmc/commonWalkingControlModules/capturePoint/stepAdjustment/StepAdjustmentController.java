@@ -224,7 +224,7 @@ public class StepAdjustmentController
          this.swingDuration.set(swingDuration);
 
          footstepIsAdjustable.set(footstep.getIsAdjustable());
-         useStepAdjustment.set(allowStepAdjustment.getValue() && footstepIsAdjustable.getBooleanValue());
+         useStepAdjustment.set(allowStepAdjustment.getValue(), footstepIsAdjustable.getBooleanValue());
          this.nextTransferDuration.set(nextTransferDuration);
       }
       else

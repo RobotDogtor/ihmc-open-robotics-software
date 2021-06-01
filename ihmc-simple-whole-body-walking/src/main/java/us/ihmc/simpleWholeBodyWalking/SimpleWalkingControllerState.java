@@ -1,5 +1,7 @@
 package us.ihmc.simpleWholeBodyWalking;
 
+import java.util.LinkedHashMap;
+
 import us.ihmc.commonWalkingControlModules.capturePoint.LinearMomentumRateControlModule;
 import us.ihmc.commonWalkingControlModules.capturePoint.SimpleLinearMomentumRateControlModule;
 import us.ihmc.commonWalkingControlModules.configurations.HighLevelControllerParameters;
@@ -9,14 +11,19 @@ import us.ihmc.commonWalkingControlModules.controllerCore.WholeBodyControllerCor
 import us.ihmc.commonWalkingControlModules.controllerCore.command.ControllerCoreCommand;
 import us.ihmc.commonWalkingControlModules.controllerCore.command.ControllerCoreOutputReadOnly;
 import us.ihmc.commonWalkingControlModules.controllerCore.command.feedbackController.FeedbackControlCommandList;
+import us.ihmc.commonWalkingControlModules.controllerCore.command.inverseDynamics.ExternalWrenchCommand;
 import us.ihmc.commonWalkingControlModules.controllerCore.command.inverseDynamics.JointAccelerationIntegrationCommand;
 import us.ihmc.commonWalkingControlModules.controllerCore.command.lowLevel.RootJointDesiredConfigurationDataReadOnly;
 import us.ihmc.commonWalkingControlModules.highLevelHumanoidControl.highLevelStates.HighLevelControllerState;
 import us.ihmc.commonWalkingControlModules.momentumBasedController.HighLevelHumanoidControllerToolbox;
+import us.ihmc.commonWalkingControlModules.sensors.SixDOFForceTorqueSensorNameHolder;
 import us.ihmc.communication.controllerAPI.CommandInputManager;
 import us.ihmc.communication.controllerAPI.StatusMessageOutputManager;
+import us.ihmc.euclid.matrix.interfaces.RotationMatrixBasics;
 import us.ihmc.euclid.referenceFrame.FrameVector2D;
+import us.ihmc.euclid.referenceFrame.FrameVector3D;
 import us.ihmc.euclid.referenceFrame.ReferenceFrame;
+import us.ihmc.euclid.tuple3D.Vector3D;
 import us.ihmc.graphicsDescription.yoGraphics.YoGraphicsListRegistry;
 import us.ihmc.humanoidRobotics.bipedSupportPolygons.ContactableFoot;
 import us.ihmc.humanoidRobotics.communication.packets.dataobjects.HighLevelControllerName;
@@ -24,8 +31,10 @@ import us.ihmc.mecano.multiBodySystem.OneDoFJoint;
 import us.ihmc.mecano.multiBodySystem.interfaces.FloatingJointBasics;
 import us.ihmc.mecano.multiBodySystem.interfaces.JointBasics;
 import us.ihmc.mecano.multiBodySystem.interfaces.RigidBodyBasics;
+import us.ihmc.mecano.spatial.Wrench;
 import us.ihmc.mecano.tools.MultiBodySystemTools;
 import us.ihmc.robotModels.FullHumanoidRobotModel;
+import us.ihmc.robotics.robotSide.RobotSide;
 import us.ihmc.robotics.robotSide.SideDependentList;
 import us.ihmc.robotics.time.ExecutionTimer;
 import us.ihmc.sensorProcessing.frames.CommonHumanoidReferenceFrames;
@@ -55,6 +64,10 @@ public class SimpleWalkingControllerState extends HighLevelControllerState
    private final BooleanParameter useCoPObjective = new BooleanParameter("UseCenterOfPressureObjectiveFromPlanner", registry, false);
 
    private final HighLevelHumanoidControllerToolbox controllerToolbox;
+   
+   private SixDOFForceTorqueSensorNameHolder sixDOFForceTorqueSensorNameHolder;
+   private LinkedHashMap<String, FrameVector3D> sixDOFRawMeasuredForceMap;
+   private LinkedHashMap<String, FrameVector3D> sixDOFRawMeasuredTorqueMap;
    
    public SimpleWalkingControllerState(CommandInputManager commandInputManager, StatusMessageOutputManager statusOutputManager,
                                        SimpleControlManagerFactory managerFactory, HighLevelHumanoidControllerToolbox controllerToolbox,
@@ -101,8 +114,14 @@ public class SimpleWalkingControllerState extends HighLevelControllerState
                                                                             gravityZ, controlDT, registry, yoGraphicsListRegistry, controllerToolbox.getOmega0());
       linearMomentumRateControlModule.setPlanarRegionsListHandler(controllerToolbox.getWalkingMessageHandler().getPlanarRegionsListHandler());
       linearMomentumRateControlModule.setPlanarRegionStepConstraintHandler(controllerToolbox.getWalkingMessageHandler().getStepConstraintRegionHandler());
+      linearMomentumRateControlModule.createGuardianXOStepAdjustmentController(controllerToolbox.getSixDOFForceTorqueSensorNameHolder(), controllerToolbox.getSixDOFRawMeasuredForces(), 
+    		  																   controllerToolbox.getSixDOFRawMeasuredTorques());
 
       registry.addChild(walkingController.getYoRegistry());
+      
+      sixDOFForceTorqueSensorNameHolder = controllerToolbox.getSixDOFForceTorqueSensorNameHolder();
+      sixDOFRawMeasuredForceMap = controllerToolbox.getSixDOFRawMeasuredForces();
+      sixDOFRawMeasuredTorqueMap = controllerToolbox.getSixDOFRawMeasuredTorques();
    }
 
    public void initialize()
@@ -118,7 +137,11 @@ public class SimpleWalkingControllerState extends HighLevelControllerState
    {
       walkingController.doAction();
 
-      linearMomentumRateControlModule.updateCurrentState(controllerToolbox.getCenterOfMassJacobian().getCenterOfMass(), controllerToolbox.getCenterOfMassJacobian().getCenterOfMassVelocity());
+      FrameVector3D angularMomentum = new FrameVector3D();
+      controllerToolbox.getAngularMomentum(angularMomentum);
+      linearMomentumRateControlModule.updateCurrentState(controllerToolbox.getCenterOfMassJacobian().getCenterOfMass(), 
+    		  											 controllerToolbox.getCenterOfMassJacobian().getCenterOfMassVelocity(),
+    		  											 angularMomentum);
       linearMomentumRateControlModule.setInputFromWalkingStateMachine(walkingController.getLinearMomentumRateControlModuleInput());
       if (!linearMomentumRateControlModule.computeControllerCoreCommands())
       {
@@ -131,6 +154,20 @@ public class SimpleWalkingControllerState extends HighLevelControllerState
       if (useCoPObjective.getValue())
       {
          controllerCoreCommand.addInverseDynamicsCommand(linearMomentumRateControlModule.getCenterOfPressureCommand());
+      }
+      
+      if (sixDOFForceTorqueSensorNameHolder!=null)
+      {
+         for (String sensorJointName : sixDOFForceTorqueSensorNameHolder.getFTJointNames())
+         {
+            String sensorName = sixDOFForceTorqueSensorNameHolder.getFTSensorNameByJointname(sensorJointName);
+            ExternalWrenchCommand ftSensorWrenchCommand = new ExternalWrenchCommand();
+            RigidBodyBasics attachedBody = controllerToolbox.getFullRobotModel().getOneDoFJointByName(sensorJointName).getPredecessor();
+            Wrench sensorWrench = new Wrench(attachedBody.getBodyFixedFrame(), sixDOFRawMeasuredTorqueMap.get(sensorName).getReferenceFrame(), 
+                                             sixDOFRawMeasuredTorqueMap.get(sensorName), sixDOFRawMeasuredForceMap.get(sensorName));
+            ftSensorWrenchCommand.set(attachedBody,sensorWrench);
+            controllerCoreCommand.addInverseDynamicsCommand(ftSensorWrenchCommand);
+         }         
       }
 
       JointDesiredOutputList stateSpecificJointSettings = getStateSpecificJointSettings();

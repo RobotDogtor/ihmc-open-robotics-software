@@ -239,6 +239,7 @@ public class ContinuousStepGenerator implements Updatable
       footstepDataListMessage.setDefaultSwingDuration(swingTime.getValue());
       footstepDataListMessage.setDefaultTransferDuration(transferTime.getValue());
       footstepDataListMessage.setFinalTransferDuration(transferTime.getValue());
+      footstepDataListMessage.setAreFootstepsAdjustable(false);
 
       int startIndex = updateFirstFootstep ? 0 : 1;
 

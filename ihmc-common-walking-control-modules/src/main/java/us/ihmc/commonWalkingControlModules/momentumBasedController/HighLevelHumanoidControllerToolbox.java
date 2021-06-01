@@ -16,6 +16,7 @@ import us.ihmc.commonWalkingControlModules.controlModules.WalkingFailureDetectio
 import us.ihmc.commonWalkingControlModules.controllers.Updatable;
 import us.ihmc.commonWalkingControlModules.messageHandlers.WalkingMessageHandler;
 import us.ihmc.commonWalkingControlModules.referenceFrames.CommonHumanoidReferenceFramesVisualizer;
+import us.ihmc.commonWalkingControlModules.sensors.SixDOFForceTorqueSensorNameHolder;
 import us.ihmc.commons.MathTools;
 import us.ihmc.euclid.referenceFrame.*;
 import us.ihmc.euclid.referenceFrame.interfaces.*;
@@ -101,11 +102,21 @@ public class HighLevelHumanoidControllerToolbox
    private final Wrench wristTempWrench = new Wrench();
    private final FrameVector3D tempWristForce = new FrameVector3D();
    private final FrameVector3D tempWristTorque = new FrameVector3D();
+   
+   private final ArrayList<YoFrameVector3D> sixDOFRawMeasuredForces;
+   private final ArrayList<YoFrameVector3D> sixDOFRawMeasuredTorques;
+   private final ArrayList<ReferenceFrame> sixDOFForceTorqueSensorMeasurementFrames;
+   private final Wrench tempSixDOFWrench = new Wrench();
+   private final FrameVector3D tempSixDOFForce = new FrameVector3D();
+   private final FrameVector3D tempSixDOFTorque = new FrameVector3D();
+   private final LinkedHashMap<String, FrameVector3D> sixDOFRawMeasuredForceMap;
+   private final LinkedHashMap<String, FrameVector3D> sixDOFRawMeasuredTorqueMap;
 
    private final SideDependentList<YoDouble> handsMass;
 
    private final SideDependentList<FootSwitchInterface> footSwitches;
    private final SideDependentList<ForceSensorDataReadOnly> wristForceSensors;
+   private final ArrayList<ForceSensorDataReadOnly> sixDOFForceTorqueSensors;
    private final YoDouble alphaCoPControl = new YoDouble("alphaCoPControl", registry);
    private final YoDouble maxAnkleTorqueCoPControl = new YoDouble("maxAnkleTorqueCoPControl", registry);
 
@@ -149,10 +160,25 @@ public class HighLevelHumanoidControllerToolbox
    private WalkingMessageHandler walkingMessageHandler;
 
    private final YoBoolean controllerFailed = new YoBoolean("controllerFailed", registry);
+   
+   private SixDOFForceTorqueSensorNameHolder sixDOFForceTorqueSensorNameHolder; 
 
    public HighLevelHumanoidControllerToolbox(FullHumanoidRobotModel fullRobotModel, CommonHumanoidReferenceFrames referenceFrames,
+           SideDependentList<? extends FootSwitchInterface> footSwitches,
+           SideDependentList<ForceSensorDataReadOnly> wristForceSensors,
+           YoDouble yoTime, double gravityZ, double omega0,
+           SideDependentList<ContactableFoot> feet, double controlDT, List<Updatable> updatables,
+           List<ContactablePlaneBody> contactableBodies, YoGraphicsListRegistry yoGraphicsListRegistry,
+           JointBasics... jointsToIgnore)
+	{
+	   this(fullRobotModel, referenceFrames, footSwitches, wristForceSensors, null, yoTime, gravityZ, omega0,
+	           feet, controlDT, updatables, contactableBodies, yoGraphicsListRegistry, jointsToIgnore);
+	}
+   
+   public HighLevelHumanoidControllerToolbox(FullHumanoidRobotModel fullRobotModel, CommonHumanoidReferenceFrames referenceFrames,
                                              SideDependentList<? extends FootSwitchInterface> footSwitches,
-                                             SideDependentList<ForceSensorDataReadOnly> wristForceSensors, YoDouble yoTime, double gravityZ, double omega0,
+                                             SideDependentList<ForceSensorDataReadOnly> wristForceSensors, ArrayList<ForceSensorDataReadOnly> sixDOFForceTorqueSensors, 
+                                             YoDouble yoTime, double gravityZ, double omega0,
                                              SideDependentList<ContactableFoot> feet, double controlDT, List<Updatable> updatables,
                                              List<ContactablePlaneBody> contactableBodies, YoGraphicsListRegistry yoGraphicsListRegistry,
                                              JointBasics... jointsToIgnore)
@@ -165,6 +191,7 @@ public class HighLevelHumanoidControllerToolbox
 
       this.footSwitches = new SideDependentList<>(footSwitches);
       this.wristForceSensors = wristForceSensors;
+      this.sixDOFForceTorqueSensors = sixDOFForceTorqueSensors;
 
       referenceFrameHashCodeResolver = new ReferenceFrameHashCodeResolver(fullRobotModel, referenceFrames);
 
@@ -340,6 +367,35 @@ public class HighLevelHumanoidControllerToolbox
             handMass.set(TotalMassCalculator.computeSubTreeMass(measurementLink));
          }
       }
+      
+      if (sixDOFForceTorqueSensors == null)
+      {
+         sixDOFRawMeasuredForces = null;                
+         sixDOFRawMeasuredTorques = null;               
+         sixDOFForceTorqueSensorMeasurementFrames = null;
+         sixDOFRawMeasuredForceMap = null;
+         sixDOFRawMeasuredTorqueMap = null;
+      }
+      else
+      {
+    	  sixDOFRawMeasuredForces = new ArrayList<>();                
+          sixDOFRawMeasuredTorques = new ArrayList<>();               
+          sixDOFForceTorqueSensorMeasurementFrames = new ArrayList<>();
+          sixDOFRawMeasuredForceMap = new LinkedHashMap<>();
+          sixDOFRawMeasuredTorqueMap = new LinkedHashMap<>();
+
+         for (ForceSensorDataReadOnly sixDOFForceTorqueSensor : sixDOFForceTorqueSensors)
+         {
+            ReferenceFrame measurementFrame = sixDOFForceTorqueSensor.getMeasurementFrame();
+            sixDOFForceTorqueSensorMeasurementFrames.add(measurementFrame);
+
+            String namePrefix = sixDOFForceTorqueSensor.getSensorName() + "SixDOFSensor";
+            sixDOFRawMeasuredForces.add(new YoFrameVector3D(namePrefix + "Force", measurementFrame, registry));
+            sixDOFRawMeasuredTorques.add(new YoFrameVector3D(namePrefix + "Torque", measurementFrame, registry));
+            sixDOFRawMeasuredForceMap.put(sixDOFForceTorqueSensor.getSensorName(), new FrameVector3D(measurementFrame));
+            sixDOFRawMeasuredTorqueMap.put(sixDOFForceTorqueSensor.getSensorName(), new FrameVector3D(measurementFrame));
+         }
+      }
 
       String graphicListName = getClass().getSimpleName();
       if (yoGraphicsListRegistry != null)
@@ -410,6 +466,7 @@ public class HighLevelHumanoidControllerToolbox
       computeCapturePoint();
       updateBipedSupportPolygons();
       readWristSensorData();
+      readSixDOFForceTorqueSensorData();
 
       computeAngularMomentum();
 
@@ -633,6 +690,26 @@ public class HighLevelHumanoidControllerToolbox
 
          wristForcesHandWeightCancelled.get(robotSide).setMatchingFrame(tempWristForce);
          wristTorquesHandWeightCancelled.get(robotSide).setMatchingFrame(tempWristTorque);
+      }
+   }
+   
+   private void readSixDOFForceTorqueSensorData()
+   {
+      if (sixDOFForceTorqueSensors == null)
+         return;
+      for (int i =0; i < sixDOFForceTorqueSensors.size(); i++)
+      {
+    	 ForceSensorDataReadOnly sixDOFForceTorqueSensor = sixDOFForceTorqueSensors.get(i);
+         sixDOFForceTorqueSensor.getWrench(tempSixDOFWrench);
+
+         tempSixDOFForce.setIncludingFrame(tempSixDOFWrench.getLinearPart());
+         tempSixDOFTorque.setIncludingFrame(tempSixDOFWrench.getAngularPart());
+
+         sixDOFRawMeasuredForces.get(i).set(tempSixDOFForce);
+         sixDOFRawMeasuredTorques.get(i).set(tempSixDOFTorque);
+         
+         sixDOFRawMeasuredForceMap.get(sixDOFForceTorqueSensor.getSensorName()).set(tempSixDOFForce);
+         sixDOFRawMeasuredTorqueMap.get(sixDOFForceTorqueSensor.getSensorName()).set(tempSixDOFTorque);
       }
    }
 
@@ -949,6 +1026,16 @@ public class HighLevelHumanoidControllerToolbox
       wrenchToPack.getLinearPart().set(tempWristForce);
       wrenchToPack.getAngularPart().set(tempWristTorque);
    }
+   
+   public LinkedHashMap<String, FrameVector3D> getSixDOFRawMeasuredForces()
+   {
+      return sixDOFRawMeasuredForceMap;
+   }
+   
+   public LinkedHashMap<String, FrameVector3D> getSixDOFRawMeasuredTorques()
+   {
+      return sixDOFRawMeasuredTorqueMap;
+   }
 
    public void getDefaultFootPolygon(RobotSide robotSide, FrameConvexPolygon2D polygonToPack)
    {
@@ -1014,6 +1101,16 @@ public class HighLevelHumanoidControllerToolbox
    public WalkingMessageHandler getWalkingMessageHandler()
    {
       return walkingMessageHandler;
+   }
+
+   public void setSixDOFForceTorqueSensorNameHolder(SixDOFForceTorqueSensorNameHolder sixDOFForceTorqueSensorNameHolder) 
+   {
+	   this.sixDOFForceTorqueSensorNameHolder = sixDOFForceTorqueSensorNameHolder;
+   }
+   
+   public SixDOFForceTorqueSensorNameHolder getSixDOFForceTorqueSensorNameHolder() 
+   {
+	   return sixDOFForceTorqueSensorNameHolder;
    }
 
 }

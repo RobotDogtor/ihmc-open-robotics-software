@@ -213,6 +213,15 @@ public class SimpleBalanceManager
    {
       return false;
    }
+   
+   public void adjustAllFootsteps(FramePoint3D footstepPositionAdjustment)
+   {
+	   for(Footstep footstep : footsteps)
+	   {
+		   FixedFramePoint3DBasics footstepPosition = footstep.getFootstepPose().getPosition();
+		   footstepPosition.add(footstepPositionAdjustment);
+	   }
+   }
 
    public void clearICPPlan()
    {
@@ -300,8 +309,8 @@ public class SimpleBalanceManager
       initializeForSingleSupport = false;
       //footstepTimings.clear();
       //footsteps.clear();
-      supportSide = null;
-      transferToSide = null;
+      //supportSide = null;
+      //transferToSide = null;
       timeRemainingInSwing = Double.NaN;
    }
 

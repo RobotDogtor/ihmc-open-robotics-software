@@ -218,7 +218,7 @@ public class SimpleSupportState extends SimpleFootControlState
 
       for (int i = dofs - 1; i >= 0; i--)
       {
-         feedbackSelectionMatrix.selectAxis(i, false);
+         feedbackSelectionMatrix.selectAxis(i, true);
       }
 
       spatialAccelerationCommand.setSelectionMatrix(accelerationSelectionMatrix);

@@ -111,8 +111,14 @@ public class SimpleSingleSupportState extends SimpleWalkingState
 
       boolean requestSwingSpeedUp = balanceManager.getICPErrorMagnitude() > icpErrorThresholdToSpeedUpSwing.getDoubleValue();
 
+      FramePoint3D unadjustedNextFootstepPosition = new FramePoint3D();
+      FramePoint3D footstepPositionAdjustment = new FramePoint3D();
+      nextFootstep.getPosition(unadjustedNextFootstepPosition);
       boolean footstepIsBeingAdjusted = balanceManager.checkAndUpdateFootstepFromICPOptimization(nextFootstep);
-
+      nextFootstep.getPosition(footstepPositionAdjustment);
+      footstepPositionAdjustment.sub(unadjustedNextFootstepPosition);
+      balanceManager.adjustAllFootsteps(footstepPositionAdjustment);
+      
       if (footstepIsBeingAdjusted)
       {
          requestSwingSpeedUp = true;
@@ -240,7 +246,9 @@ public class SimpleSingleSupportState extends SimpleWalkingState
    {
       remainingSwingTimeAccordingToPlan.set(balanceManager.getTimeRemainingInCurrentState());
 
-      double remainingTime = 0;
+      //TODO: Need to augment the SimpleBalanceManager with ability to do this calculation
+      //double remainingTime = balanceManager.estimateTimeRemainingForSwingUnderDisturbance();
+      double remainingTime = remainingSwingTimeAccordingToPlan.getValue();
       estimatedRemainingSwingTimeUnderDisturbance.set(remainingTime);
 
       if (remainingTime > 1.0e-3)
@@ -263,7 +271,7 @@ public class SimpleSingleSupportState extends SimpleWalkingState
 
       pelvisOrientationManager.setTrajectoryTime(swingTime);
       pelvisOrientationManager.setUpcomingFootstep(nextFootstep);
-      pelvisOrientationManager.updateTrajectoryFromFootstep(); // fixme this shouldn't be called when the footstep is updated
+      pelvisOrientationManager.updateTrajectoryFromFootstep(); // TODO: fixme this shouldn't be called when the footstep is updated
    }
 
   

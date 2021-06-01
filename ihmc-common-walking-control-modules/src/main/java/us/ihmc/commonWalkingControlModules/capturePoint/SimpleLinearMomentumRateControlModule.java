@@ -6,6 +6,7 @@ import static us.ihmc.graphicsDescription.appearance.YoAppearance.DarkRed;
 import static us.ihmc.graphicsDescription.appearance.YoAppearance.Purple;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 import org.ejml.data.DMatrixRMaj;
@@ -22,6 +23,7 @@ import us.ihmc.commonWalkingControlModules.messageHandlers.PlanarRegionsListHand
 import us.ihmc.commonWalkingControlModules.messageHandlers.StepConstraintRegionHandler;
 import us.ihmc.commonWalkingControlModules.momentumBasedController.CapturePointCalculator;
 import us.ihmc.commonWalkingControlModules.momentumBasedController.optimization.MomentumOptimizationSettings;
+import us.ihmc.commonWalkingControlModules.sensors.SixDOFForceTorqueSensorNameHolder;
 import us.ihmc.commons.lists.RecyclingArrayList;
 import us.ihmc.euclid.referenceFrame.FramePoint2D;
 import us.ihmc.euclid.referenceFrame.FramePoint3D;
@@ -29,6 +31,7 @@ import us.ihmc.euclid.referenceFrame.FrameVector2D;
 import us.ihmc.euclid.referenceFrame.FrameVector3D;
 import us.ihmc.euclid.referenceFrame.ReferenceFrame;
 import us.ihmc.euclid.referenceFrame.interfaces.FixedFramePoint2DBasics;
+import us.ihmc.euclid.referenceFrame.interfaces.FixedFramePoint3DBasics;
 import us.ihmc.euclid.referenceFrame.interfaces.FixedFrameVector2DBasics;
 import us.ihmc.euclid.referenceFrame.interfaces.FramePoint2DReadOnly;
 import us.ihmc.euclid.referenceFrame.interfaces.FramePoint3DReadOnly;
@@ -54,6 +57,7 @@ import us.ihmc.robotics.screwTheory.TotalMassCalculator;
 import us.ihmc.sensorProcessing.frames.CommonHumanoidReferenceFrames;
 import us.ihmc.yoVariables.euclid.referenceFrame.YoFramePoint2D;
 import us.ihmc.yoVariables.euclid.referenceFrame.YoFramePoint3D;
+import us.ihmc.yoVariables.euclid.referenceFrame.YoFramePose3D;
 import us.ihmc.yoVariables.euclid.referenceFrame.YoFrameVector3D;
 import us.ihmc.yoVariables.parameters.BooleanParameter;
 import us.ihmc.yoVariables.parameters.DoubleParameter;
@@ -79,6 +83,7 @@ public class SimpleLinearMomentumRateControlModule
    private final RateLimitedYoFrameVector desiredLinearMomentumRateWeight;
 
    private final YoBoolean minimizingAngularMomentumRateZ = new YoBoolean("MinimizingAngularMomentumRateZ", registry);
+   private final DoubleParameter angularMomentumRateOfChangePGain = new DoubleParameter("angularMomentumRateOfChangePGain", registry, 0);
 
    private final YoFrameVector3D controlledCoMAcceleration;
 
@@ -117,6 +122,7 @@ public class SimpleLinearMomentumRateControlModule
 
    private final FramePoint3D cmp3d = new FramePoint3D();
    private final FrameVector3D linearMomentumRateOfChange = new FrameVector3D();
+   private final FrameVector3D angularMomentum;
 
    private boolean desiredCMPcontainedNaN = false;
    private boolean desiredCoPcontainedNaN = false;
@@ -163,6 +169,12 @@ public class SimpleLinearMomentumRateControlModule
    private PlanarRegionsListHandler planarRegionsListHandler;
    private StepConstraintRegionHandler stepConstraintRegionHandler;
    
+   private SixDOFForceTorqueSensorNameHolder sixDOFForceTorqueSensorNameHolder;
+   private LinkedHashMap<String, FrameVector3D> sixDOFRawMeasuredForceMap;
+   private LinkedHashMap<String, FrameVector3D> sixDOFRawMeasuredTorqueMap;
+   private SideDependentList<FrameVector3D> footSixDOFFTSensorForce = new SideDependentList<>(new FrameVector3D(),new FrameVector3D());
+   private YoDouble forceToPositionAdjustmentGain = new YoDouble("forceToPositionAdjustmentGain", registry); 
+   
    public SimpleLinearMomentumRateControlModule(CommonHumanoidReferenceFrames referenceFrames,
                                           SideDependentList<ContactableFoot> contactableFeet,
                                           RigidBodyBasics elevator,
@@ -201,6 +213,7 @@ public class SimpleLinearMomentumRateControlModule
       centerOfMass = new FramePoint3D(centerOfMassFrame);
       controlledCoMAcceleration = new YoFrameVector3D("ControlledCoMAcceleration", "", centerOfMassFrame, registry);
       desiredCoPInMidFeet = new FramePoint2D(midFootZUpFrame);
+      angularMomentum = new FrameVector3D(centerOfMassFrame);
 
       capturePointCalculator = new CapturePointCalculator(centerOfMassFrame, elevator);
       DoubleProvider capturePointVelocityAlpha = () -> AlphaFilteredYoVariable.computeAlphaGivenBreakFrequencyProperly(capturePointVelocityBreakFrequency.getValue(),
@@ -227,6 +240,7 @@ public class SimpleLinearMomentumRateControlModule
 
       lqrMomentumController = new LQRMomentumController(omega0, registry);
       parentRegistry.addChild(registry);
+      forceToPositionAdjustmentGain.set(3);
    }
 
    public void reset()
@@ -238,6 +252,14 @@ public class SimpleLinearMomentumRateControlModule
       yoAchievedCMP.setToNaN();
       yoCenterOfMass.setToNaN();
       yoCapturePoint.setToNaN();
+   }
+   
+   public void createGuardianXOStepAdjustmentController(SixDOFForceTorqueSensorNameHolder sixDOFForceTorqueSensorNameHolder,
+		   										LinkedHashMap<String, FrameVector3D> sixDOFRawMeasuredForceMap, LinkedHashMap<String, FrameVector3D> sixDOFRawMeasuredTorqueMap)
+   {
+	   this.sixDOFForceTorqueSensorNameHolder = sixDOFForceTorqueSensorNameHolder;
+	   this.sixDOFRawMeasuredForceMap = sixDOFRawMeasuredForceMap;
+	   this.sixDOFRawMeasuredTorqueMap = sixDOFRawMeasuredTorqueMap;
    }
 
    public void setPlanarRegionStepConstraintHandler(StepConstraintRegionHandler planarRegionStepConstraint)
@@ -379,10 +401,13 @@ public class SimpleLinearMomentumRateControlModule
       selectionMatrix.setToLinearSelectionOnly();
       selectionMatrix.selectLinearZ(controlHeightWithMomentum);
       selectionMatrix.selectAngularZ(minimizingAngularMomentumRateZ.getValue());
-      momentumRateCommand.setLinearMomentumRate(linearMomentumRateOfChange);
+      selectionMatrix.setAngularAxisSelection(true,true,true);
       momentumRateCommand.setSelectionMatrix(selectionMatrix);
       momentumRateCommand.setWeights(angularMomentumRateWeight, desiredLinearMomentumRateWeight);
-
+      angularMomentum.scale(angularMomentumRateOfChangePGain.getValue());
+      momentumRateCommand.setMomentumRate(angularMomentum, linearMomentumRateOfChange);
+      
+      
       desiredCoPInMidFeet.setMatchingFrame(desiredCoP);
       centerOfPressureCommand.setDesiredCoP(desiredCoP);
       centerOfPressureCommand.setWeight(midFootZUpFrame, centerOfPressureWeight.getValue(), centerOfPressureWeight.getValue());
@@ -423,6 +448,9 @@ public class SimpleLinearMomentumRateControlModule
       bipedSupportPolygons.updateUsingContactStateCommand(contactStateCommands);
    }
 
+   private final YoFramePose3D footstepSolution = new YoFramePose3D("ForceSensorAdjustedFootstepLocation", worldFrame, registry);
+   private boolean wasFootstepAdjusted = false;
+   
    private void updateICPControllerState()
    {
       if ((initializeForStanding && initializeForTransfer) || (initializeForTransfer && initializeForSingleSupport) || (initializeForSingleSupport
@@ -432,10 +460,13 @@ public class SimpleLinearMomentumRateControlModule
       }
    }
 
-   public void updateCurrentState(FramePoint3DReadOnly CenterOfMassPosition, FrameVector3DReadOnly CenterOfMassVelocity)
+   public void updateCurrentState(FramePoint3DReadOnly centerOfMassPosition, FrameVector3DReadOnly centerOfMassVelocity, FrameVector3DReadOnly angularMomentumCurrent)
    {
-      CenterOfMassPosition.get(currentState);
-      CenterOfMassVelocity.get(3, currentState);
+      centerOfMassPosition.get(currentState);
+      centerOfMassVelocity.get(3, currentState);
+      angularMomentum.changeFrame(centerOfMassFrame);
+      angularMomentum.set(angularMomentumCurrent);
+      angularMomentum.changeFrame(worldFrame);
    }
    
    private void computeICPController()
@@ -443,6 +474,35 @@ public class SimpleLinearMomentumRateControlModule
          lqrMomentumController.setOmega(omega0);
          lqrMomentumController.setVRPTrajectory(vrpTrajectories);
          lqrMomentumController.computeControlInput(currentState, timeInContactPhase);
+         FrameVector2D error = new FrameVector2D();
+         
+         if(sixDOFForceTorqueSensorNameHolder != null)
+         {
+        	 if ((supportSide == null) || (transferToSide == null))
+        		 return;
+        	 boolean isInSwing = supportSide.equals(transferToSide);
+        	 if (isInSwing)
+        	 {
+        		 RobotSide swingSide = supportSide.getOppositeSide();
+             FrameVector3D tempLeftFootForce = new FrameVector3D(sixDOFRawMeasuredForceMap.get(sixDOFForceTorqueSensorNameHolder.getLeftFootSixDOFForceTorqueSensorName()));
+             FrameVector3D tempRightFootForce = new FrameVector3D(sixDOFRawMeasuredForceMap.get(sixDOFForceTorqueSensorNameHolder.getRightFootSixDOFForceTorqueSensorName()));
+             tempLeftFootForce.changeFrame(ReferenceFrame.getWorldFrame());
+             tempRightFootForce.changeFrame(ReferenceFrame.getWorldFrame());
+        		 footSixDOFFTSensorForce.get(RobotSide.LEFT).set(tempLeftFootForce);
+        		 footSixDOFFTSensorForce.get(RobotSide.RIGHT).set(tempRightFootForce);
+        		 FixedFramePoint3DBasics footstepPosition = footstepSolution.getPosition();
+        		 footSixDOFFTSensorForce.get(swingSide).scale(forceToPositionAdjustmentGain.getValue()/100000);
+        		 footSixDOFFTSensorForce.get(swingSide).setZ(0);
+        		 footstepPosition.add(footSixDOFFTSensorForce.get(swingSide));
+        		 wasFootstepAdjusted = true;
+        		 
+        		 if((yoTime.getDoubleValue()>4)&&(Math.random()>0.9)&&false)
+        		 {
+        			 footstepPosition.add(0.005, 0.005, 0);
+        			 wasFootstepAdjusted = true;
+        		 }
+        	 }        	 
+         }
    }
 
    private void checkAndPackOutputs()
