@@ -13,6 +13,7 @@ import us.ihmc.avatar.factory.AvatarSimulationFactory;
 import us.ihmc.avatar.initialSetup.DRCGuiInitialSetup;
 import us.ihmc.avatar.initialSetup.RobotInitialSetup;
 import us.ihmc.avatar.initialSetup.DRCSCSInitialSetup;
+import us.ihmc.avatar.networkProcessor.HumanoidNetworkProcessorParameters;
 import us.ihmc.commonWalkingControlModules.capturePoint.splitFractionCalculation.SplitFractionCalculatorParametersReadOnly;
 import us.ihmc.commonWalkingControlModules.configurations.HighLevelControllerParameters;
 import us.ihmc.commonWalkingControlModules.configurations.WalkingControllerParameters;
@@ -23,11 +24,15 @@ import us.ihmc.commonWalkingControlModules.highLevelHumanoidControl.factories.Hi
 import us.ihmc.commonWalkingControlModules.highLevelHumanoidControl.factories.HighLevelHumanoidControllerFactory;
 import us.ihmc.commonWalkingControlModules.highLevelHumanoidControl.factories.WalkingProvider;
 import us.ihmc.commonWalkingControlModules.highLevelHumanoidControl.highLevelStates.pushRecoveryController.PushRecoveryControllerParameters;
+import us.ihmc.commonWalkingControlModules.sensors.SixDOFForceTorqueSensorNameHolder;
 import us.ihmc.communication.ROS2Tools;
+import us.ihmc.communication.packetCommunicator.PacketCommunicator;
+import us.ihmc.communication.util.NetworkPorts;
 import us.ihmc.euclid.transform.RigidBodyTransform;
 import us.ihmc.graphicsDescription.HeightMap;
 import us.ihmc.humanoidRobotics.communication.packets.dataobjects.HighLevelControllerName;
 import us.ihmc.humanoidRobotics.communication.subscribers.PelvisPoseCorrectionCommunicatorInterface;
+import us.ihmc.humanoidRobotics.kryo.IHMCCommunicationKryoNetClassList;
 import us.ihmc.pubsub.DomainFactory.PubSubImplementation;
 import us.ihmc.robotics.controllers.ControllerFailureListener;
 import us.ihmc.robotics.robotSide.RobotSide;
@@ -44,33 +49,41 @@ public class DRCFlatGroundWalkingTrack
 
    private final AvatarSimulation avatarSimulation;
 
-   private final RealtimeROS2Node realtimeROS2Node = ROS2Tools.createRealtimeROS2Node(PubSubImplementation.INTRAPROCESS, "flat_ground_walking_track_simulation");
+   private final RealtimeROS2Node realtimeROS2Node = ROS2Tools.createRealtimeROS2Node(PubSubImplementation.FAST_RTPS, "flat_ground_walking_track_simulation");
 
-   private static boolean createYoVariableServer = System.getProperty("create.yovariable.server") != null
-         && Boolean.parseBoolean(System.getProperty("create.yovariable.server"));
+   private static boolean createYoVariableServer = true;
 
    public DRCFlatGroundWalkingTrack(RobotInitialSetup<HumanoidFloatingRootJointRobot> robotInitialSetup, DRCGuiInitialSetup guiInitialSetup, DRCSCSInitialSetup scsInitialSetup,
                                     boolean useVelocityAndHeadingScript, boolean cheatWithGroundHeightAtForFootstep, DRCRobotModel model)
    {
       this(robotInitialSetup, guiInitialSetup, scsInitialSetup, useVelocityAndHeadingScript, cheatWithGroundHeightAtForFootstep, model,
-           WalkingProvider.VELOCITY_HEADING_COMPONENT, new HeadingAndVelocityEvaluationScriptParameters(), null, null); // should always be committed as VELOCITY_HEADING_COMPONENT
+           WalkingProvider.VELOCITY_HEADING_COMPONENT, new HeadingAndVelocityEvaluationScriptParameters(), null, null, null); // should always be committed as VELOCITY_HEADING_COMPONENT
    }
    
    // SimpleAtlas Simulation calls this helper constructor
    public DRCFlatGroundWalkingTrack(RobotInitialSetup<HumanoidFloatingRootJointRobot> robotInitialSetup, DRCGuiInitialSetup guiInitialSetup, DRCSCSInitialSetup scsInitialSetup,
                                     boolean useVelocityAndHeadingScript, boolean cheatWithGroundHeightAtForFootstep, DRCRobotModel model,
-                                    HeadingAndVelocityEvaluationScriptParameters walkingScriptParameters, HighLevelControllerStateFactory customControllerState)
+                                    HeadingAndVelocityEvaluationScriptParameters walkingScriptParameters, HighLevelControllerStateFactory customControllerState,
+                                    SixDOFForceTorqueSensorNameHolder sixDOFForceTorqueSensorNameHolder)
    {
       this(robotInitialSetup, guiInitialSetup, scsInitialSetup, useVelocityAndHeadingScript, cheatWithGroundHeightAtForFootstep, model,
-           WalkingProvider.VELOCITY_HEADING_COMPONENT, walkingScriptParameters, null, customControllerState); // should always be committed as VELOCITY_HEADING_COMPONENT
+           WalkingProvider.VELOCITY_HEADING_COMPONENT, walkingScriptParameters, null, customControllerState, sixDOFForceTorqueSensorNameHolder); // should always be committed as VELOCITY_HEADING_COMPONENT
    }
+   
+   public DRCFlatGroundWalkingTrack(DRCRobotInitialSetup<HumanoidFloatingRootJointRobot> robotInitialSetup, DRCGuiInitialSetup guiInitialSetup, DRCSCSInitialSetup scsInitialSetup,
+           boolean useVelocityAndHeadingScript, boolean cheatWithGroundHeightAtForFootstep, DRCRobotModel model,
+           HeadingAndVelocityEvaluationScriptParameters walkingScriptParameters)
+	{
+		this(robotInitialSetup, guiInitialSetup, scsInitialSetup, useVelocityAndHeadingScript, cheatWithGroundHeightAtForFootstep, model,
+				WalkingProvider.VELOCITY_HEADING_COMPONENT, walkingScriptParameters, null, null, null); // should always be committed as VELOCITY_HEADING_COMPONENT
+	}
 
    public DRCFlatGroundWalkingTrack(RobotInitialSetup<HumanoidFloatingRootJointRobot> robotInitialSetup, DRCGuiInitialSetup guiInitialSetup,
                                     DRCSCSInitialSetup scsInitialSetup, boolean useVelocityAndHeadingScript, boolean cheatWithGroundHeightAtForFootstep,
                                     DRCRobotModel model, PelvisPoseCorrectionCommunicatorInterface externalPelvisCorrectorSubscriber)
    {
       this(robotInitialSetup, guiInitialSetup, scsInitialSetup, useVelocityAndHeadingScript, cheatWithGroundHeightAtForFootstep, model,
-           WalkingProvider.VELOCITY_HEADING_COMPONENT, new HeadingAndVelocityEvaluationScriptParameters(), externalPelvisCorrectorSubscriber, null);
+           WalkingProvider.VELOCITY_HEADING_COMPONENT, new HeadingAndVelocityEvaluationScriptParameters(), externalPelvisCorrectorSubscriber, null, null);
    }
 
    public DRCFlatGroundWalkingTrack(RobotInitialSetup<HumanoidFloatingRootJointRobot> robotInitialSetup, DRCGuiInitialSetup guiInitialSetup,
@@ -78,14 +91,15 @@ public class DRCFlatGroundWalkingTrack
                                     DRCRobotModel model, WalkingProvider walkingProvider, HeadingAndVelocityEvaluationScriptParameters walkingScriptParameters)
    {
       this(robotInitialSetup, guiInitialSetup, scsInitialSetup, useVelocityAndHeadingScript, cheatWithGroundHeightAtForFootstep, model, walkingProvider,
-           walkingScriptParameters, null, null);
+           walkingScriptParameters, null, null, null);
    }
 
 
    private DRCFlatGroundWalkingTrack(RobotInitialSetup<HumanoidFloatingRootJointRobot> robotInitialSetup, DRCGuiInitialSetup guiInitialSetup,
                                     DRCSCSInitialSetup scsInitialSetup, boolean useVelocityAndHeadingScript, boolean cheatWithGroundHeightAtForFootstep,
                                     DRCRobotModel model, WalkingProvider walkingProvider, HeadingAndVelocityEvaluationScriptParameters walkingScriptParameters,
-                                    PelvisPoseCorrectionCommunicatorInterface externalPelvisCorrectorSubscriber, HighLevelControllerStateFactory customControllerStateFactory)
+                                    PelvisPoseCorrectionCommunicatorInterface externalPelvisCorrectorSubscriber, HighLevelControllerStateFactory customControllerStateFactory,
+                                    SixDOFForceTorqueSensorNameHolder sixDOFForceTorqueSensorNameHolder)
    {
       //    scsInitialSetup = new DRCSCSInitialSetup(TerrainType.FLAT);
 
@@ -104,6 +118,24 @@ public class DRCFlatGroundWalkingTrack
       SideDependentList<String> feetForceSensorNames = sensorInformation.getFeetForceSensorNames();
       SideDependentList<String> feetContactSensorNames = sensorInformation.getFeetContactSensorNames();
       SideDependentList<String> wristForceSensorNames = sensorInformation.getWristForceSensorNames();
+      String[] forceSensorNames = sensorInformation.getForceSensorNames();
+      ArrayList<String> sixDOFForceTorqueSensorNames = new ArrayList<>();
+      for (String forceSensorName : forceSensorNames)
+      {
+    	  if (wristForceSensorNames!=null)
+    		  if (!(feetForceSensorNames.containsValue(forceSensorName)) & !(wristForceSensorNames.containsValue(forceSensorName)))
+    			  sixDOFForceTorqueSensorNames.add(forceSensorName);
+      }
+      
+      // Added Network Processor
+      HumanoidNetworkProcessorParameters networkProcessorParameters = new HumanoidNetworkProcessorParameters();
+      networkProcessorParameters.setROSLocalhostURI();
+
+      PacketCommunicator rosAPI_communicator = PacketCommunicator.createIntraprocessPacketCommunicator(NetworkPorts.ROS_API_COMMUNICATOR, new IHMCCommunicationKryoNetClassList());
+
+      networkProcessorParameters.setUseBehaviorModule(true, true);
+      
+      //
 
       RobotContactPointParameters<RobotSide> contactPointParameters = model.getContactPointParameters();
       ArrayList<String> additionalContactRigidBodyNames = contactPointParameters.getAdditionalContactRigidBodyNames();
@@ -116,20 +148,18 @@ public class DRCFlatGroundWalkingTrack
       for (int i = 0; i < contactPointParameters.getAdditionalContactNames().size(); i++)
          contactableBodiesFactory.addAdditionalContactPoint(additionalContactRigidBodyNames.get(i), additionalContactNames.get(i), additionalContactTransforms.get(i));
 
-      HighLevelHumanoidControllerFactory controllerFactory = new HighLevelHumanoidControllerFactory(contactableBodiesFactory,
-                                                                                                    feetForceSensorNames,
-                                                                                                    feetContactSensorNames,
-                                                                                                    wristForceSensorNames,
-                                                                                                    highLevelControllerParameters,
+      HighLevelHumanoidControllerFactory controllerFactory = new HighLevelHumanoidControllerFactory(contactableBodiesFactory, feetForceSensorNames, feetContactSensorNames,
+                                                                                                    wristForceSensorNames, sixDOFForceTorqueSensorNames, highLevelControllerParameters,
                                                                                                     walkingControllerParameters,
                                                                                                     pushRecoveryControllerParameters,
-                                                                                                    copTrajectoryParameters,
                                                                                                     splitFractionParameters);
+                                                                                                    copTrajectoryParameters);
       setupHighLevelStates(controllerFactory, feetForceSensorNames, highLevelControllerParameters.getFallbackControllerState());
       controllerFactory.setHeadingAndVelocityEvaluationScriptParameters(walkingScriptParameters);
       controllerFactory.createControllerNetworkSubscriber(model.getSimpleRobotName(), realtimeROS2Node);
       if (customControllerStateFactory != null)
          controllerFactory.addCustomControlState(customControllerStateFactory);
+      controllerFactory.setSixDOFForceTorqueSensorNameHolder(sixDOFForceTorqueSensorNameHolder);;
 
       HeightMap heightMapForFootstepZ = null;
       if (cheatWithGroundHeightAtForFootstep)
@@ -162,7 +192,23 @@ public class DRCFlatGroundWalkingTrack
          avatarSimulation.getSimulationConstructionSet().addButton(resetButton);
       }
 
+      avatarSimulation.getSimulationConstructionSet().setupVarGroup("kinematics", 
+    		  new String[]{"t", "q_x", "q_y", "q_z", "q_qs", "q_qx", "q_qy", "q_qz",
+    				  		"qd_x", "qd_y", "qd_z", "qd_wx", "qd_wy", "qd_wz"}, 
+    		  new String[]{"q_to.*", "q_la.*", "q_ra.*", "q_ll.*", "q_rl.*", 
+    				  		"qd_to.*", "qd_la.*", "qd_ra.*", "qd_ll.*", "qd_rl.*",
+    				  		"tau_to.*", "tau_la.*", "tau_ra.*", "tau_ll.*", "tau_rl.*"});
+      avatarSimulation.getSimulationConstructionSet().setupVarGroup("JointTorques", 
+    		  new String[]{"t"}, 
+    		  new String[]{"tau_to.*", "tau_la.*", "tau_ra.*", "tau_ll.*", "tau_rl.*"});
+      avatarSimulation.getSimulationConstructionSet().setupVarGroup("JointAngles", 
+    		  new String[]{"t", "q_x", "q_y", "q_z", "q_qs", "q_qx", "q_qy", "q_qz"}, 
+    		  new String[]{"q_to.*", "q_la.*", "q_ra.*", "q_ll.*", "q_rl.*"});
+      avatarSimulation.getSimulationConstructionSet().setupVarGroup("JointVelocities", 
+    		  new String[]{"t", "qd_x", "qd_y", "qd_z", "qd_wx", "qd_wy", "qd_wz"}, 
+    		  new String[]{"qd_to.*", "qd_la.*", "qd_ra.*", "qd_ll.*", "qd_rl.*"});
       avatarSimulation.start();
+      realtimeROS2Node.spin();
    }
 
    /**
