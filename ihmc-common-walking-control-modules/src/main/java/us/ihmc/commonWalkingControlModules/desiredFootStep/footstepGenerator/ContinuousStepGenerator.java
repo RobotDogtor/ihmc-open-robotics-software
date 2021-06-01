@@ -228,7 +228,10 @@ public class ContinuousStepGenerator implements Updatable
             {
                updateFirstFootstep = true;
                currentSupportSide.set(footstepCompletionSide.getValue());
+               currentSupportFootPose.setMatchingFrame(footPoseProvider.getCurrentFootPose(currentSupportSide.getEnumValue().getOppositeSide()));
+               double supportheight = currentSupportFootPose.getZ();
                currentSupportFootPose.setMatchingFrame(footPoseProvider.getCurrentFootPose(currentSupportSide.getEnumValue()));
+               currentSupportFootPose.setZ(supportheight);
             }
          }
 
