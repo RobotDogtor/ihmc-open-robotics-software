@@ -25,7 +25,7 @@ import java.util.Map;
 
 public class YoSaveableModuleStateTools
 {
-   private static final Path rootPath = WorkspacePathTools.handleWorkingDirectoryFuzziness("ihmc-open-robotics-software");
+   private static final Path rootPath = WorkspacePathTools.handleWorkingDirectoryFuzziness("trec-robotics-software");
    private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmssSSS");
    private static final String testFormatPostfix = "_Log";
 
