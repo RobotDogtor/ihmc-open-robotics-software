@@ -6,6 +6,7 @@ import us.ihmc.euclid.tuple3D.Vector3D;
 import us.ihmc.mecano.multiBodySystem.interfaces.RigidBodyBasics;
 import us.ihmc.mecano.spatial.Momentum;
 import us.ihmc.mecano.spatial.Twist;
+import us.ihmc.mecano.spatial.interfaces.MomentumBasics;
 import us.ihmc.mecano.spatial.interfaces.SpatialInertiaBasics;
 
 public class MomentumCalculator
@@ -23,7 +24,7 @@ public class MomentumCalculator
       this(rootBody.subtreeArray());
    }
 
-   public void computeAndPack(Momentum momentum)
+   public void computeAndPack(MomentumBasics momentum)
    {
       momentum.setToZero();
 
