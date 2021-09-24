@@ -10,9 +10,7 @@ import us.ihmc.mecano.spatial.interfaces.SpatialInertiaBasics;
 
 public class MomentumCalculator
 {
-   private final Twist tempTwist = new Twist();
    private final Momentum tempMomentum = new Momentum();
-   private final Vector3D zero = new Vector3D();
    private final RigidBodyBasics[] rigidBodiesInOrders;
 
    public MomentumCalculator(RigidBodyBasics... rigidBodies)
@@ -27,15 +25,13 @@ public class MomentumCalculator
 
    public void computeAndPack(Momentum momentum)
    {
-      momentum.getAngularPart().set(zero);
-      momentum.getLinearPart().set(zero);
+      momentum.setToZero();
 
       for (RigidBodyBasics rigidBody : rigidBodiesInOrders)
       {
          SpatialInertiaBasics inertia = rigidBody.getInertia();
-         rigidBody.getBodyFixedFrame().getTwistOfFrame(tempTwist);
          tempMomentum.setReferenceFrame(inertia.getReferenceFrame());
-         tempMomentum.compute(inertia, tempTwist);
+         tempMomentum.compute(inertia, rigidBody.getBodyFixedFrame().getTwistOfFrame());
          tempMomentum.changeFrame(momentum.getReferenceFrame());
          momentum.add(tempMomentum);
       }
