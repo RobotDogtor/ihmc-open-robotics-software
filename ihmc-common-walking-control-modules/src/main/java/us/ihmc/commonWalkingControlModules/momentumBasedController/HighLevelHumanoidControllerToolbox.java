@@ -44,6 +44,7 @@ import us.ihmc.robotics.math.filters.AlphaFilteredYoVariable;
 import us.ihmc.robotics.partNames.LegJointName;
 import us.ihmc.robotics.robotSide.RobotSide;
 import us.ihmc.robotics.robotSide.SideDependentList;
+import us.ihmc.robotics.screwTheory.AngularExcursionCalculator;
 import us.ihmc.robotics.screwTheory.MomentumCalculator;
 import us.ihmc.robotics.screwTheory.TotalMassCalculator;
 import us.ihmc.robotics.sensors.FootSwitchInterface;
@@ -138,7 +139,7 @@ public class HighLevelHumanoidControllerToolbox
 
    private final YoDouble omega0 = new YoDouble("omega0", registry);
 
-   private final MomentumCalculator momentumCalculator;
+   private final AngularExcursionCalculator angularExcursionCalculator;
    private final YoFrameVector3D yoAngularMomentum;
    private final AlphaFilteredYoFrameVector filteredYoAngularMomentum;
    private final YoDouble totalMass = new YoDouble("TotalMass", registry);
@@ -355,7 +356,7 @@ public class HighLevelHumanoidControllerToolbox
       yoCenterOfPressure.setToNaN();
 
       this.totalMass.set(totalMass);
-      momentumCalculator = new MomentumCalculator(fullRobotModel.getElevator().subtreeArray());
+      angularExcursionCalculator = new AngularExcursionCalculator(centerOfMassFrame, fullRobotModel.getElevator(), controlDT, registry);
       yoAngularMomentum = new YoFrameVector3D("AngularMomentum", centerOfMassFrame, registry);
       YoDouble alpha = new YoDouble("filteredAngularMomentumAlpha", registry);
       alpha.set(0.95); // switch to break frequency and move to walking parameters
@@ -465,14 +466,11 @@ public class HighLevelHumanoidControllerToolbox
    }
 
    private final FrameVector3D angularMomentum = new FrameVector3D();
-   private final Momentum robotMomentum = new Momentum();
 
    private void computeAngularMomentum()
    {
-      robotMomentum.setToZero(centerOfMassFrame);
-      momentumCalculator.computeAndPack(robotMomentum);
-      angularMomentum.setIncludingFrame(robotMomentum.getAngularPart());
-      yoAngularMomentum.set(angularMomentum);
+      angularExcursionCalculator.compute();
+      yoAngularMomentum.set(angularExcursionCalculator.getAngularMomentum());
       filteredYoAngularMomentum.update();
    }
 
@@ -481,7 +479,7 @@ public class HighLevelHumanoidControllerToolbox
 
    public void getAdjustedDesiredCapturePoint(FramePoint2DReadOnly desiredCapturePoint, FramePoint2DBasics adjustedDesiredCapturePointToPack)
    {
-      angularMomentum.set(filteredYoAngularMomentum);
+      angularMomentum.setIncludingFrame(filteredYoAngularMomentum);
       ReferenceFrame comFrame = angularMomentum.getReferenceFrame();
       localDesiredCapturePoint.setIncludingFrame(desiredCapturePoint);
       localDesiredCapturePoint.changeFrameAndProjectToXYPlane(comFrame);
