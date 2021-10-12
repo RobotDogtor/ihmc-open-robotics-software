@@ -32,8 +32,11 @@ import us.ihmc.euclid.referenceFrame.ReferenceFrame;
 import us.ihmc.euclid.referenceFrame.interfaces.FrameVertex2DSupplier;
 import us.ihmc.euclid.referenceFrame.tools.ReferenceFrameTools;
 import us.ihmc.euclid.tools.EuclidCoreRandomTools;
+import us.ihmc.euclid.tools.EuclidCoreTestTools;
 import us.ihmc.euclid.tools.EuclidCoreTools;
+import us.ihmc.euclid.transform.RigidBodyTransform;
 import us.ihmc.euclid.tuple2D.Point2D;
+import us.ihmc.euclid.tuple2D.Vector2D;
 import us.ihmc.euclid.tuple2D.interfaces.Point2DBasics;
 import us.ihmc.euclid.tuple2D.interfaces.Point2DReadOnly;
 import us.ihmc.log.LogTools;
@@ -167,7 +170,12 @@ public class ConvexPolygonToolsTest
 
       double xMin3 = -0.5, xMax3 = 3.5, yMin3 = -0.5, yMax3 = 2.5;
 
-      ArrayList<FramePoint2D> pointsToCheck = ConvexPolygon2dTestHelpers.generateRandomRectangularFramePoints(random, zUpFrame, xMin3, xMax3, yMin3, yMax3,
+      ArrayList<FramePoint2D> pointsToCheck = ConvexPolygon2dTestHelpers.generateRandomRectangularFramePoints(random,
+                                                                                                              zUpFrame,
+                                                                                                              xMin3,
+                                                                                                              xMax3,
+                                                                                                              yMin3,
+                                                                                                              yMax3,
                                                                                                               numberOfPointsToCheck);
 
       for (FramePoint2D pointToCheck : pointsToCheck)
@@ -267,9 +275,9 @@ public class ConvexPolygonToolsTest
 
          FrameConvexPolygon2D polygon = new FrameConvexPolygon2D();
          polygon.addVertex(rectangleHalfLength, rectangleHalfWidth);
-         polygon.addVertex(rectangleHalfLength, - rectangleHalfWidth);
-         polygon.addVertex(- rectangleHalfLength, rectangleHalfWidth);
-         polygon.addVertex(- rectangleHalfLength, - rectangleHalfWidth);
+         polygon.addVertex(rectangleHalfLength, -rectangleHalfWidth);
+         polygon.addVertex(-rectangleHalfLength, rectangleHalfWidth);
+         polygon.addVertex(-rectangleHalfLength, -rectangleHalfWidth);
          polygon.update();
 
          double distanceEpsilon = 1e-10;
@@ -290,13 +298,14 @@ public class ConvexPolygonToolsTest
          double expectedArea = 4.0 * rectangleHalfLength * rectangleHalfWidth;
          System.out.println(polygon);
 
-         if(PLOT_RESULTS)
+         if (PLOT_RESULTS)
          {
             plotPolygon(polygon, 4, originalPolygon);
          }
          else
          {
-            Assertions.assertTrue(EuclidCoreTools.epsilonEquals(area, expectedArea, 1e-6), "Limiting number of vertices failed. Expected area = " + expectedArea + " computed area: " + area);
+            Assertions.assertTrue(EuclidCoreTools.epsilonEquals(area, expectedArea, 1e-6),
+                                  "Limiting number of vertices failed. Expected area = " + expectedArea + " computed area: " + area);
          }
       }
    }
@@ -307,8 +316,8 @@ public class ConvexPolygonToolsTest
       Random random = new Random(123821L);
       int tests = 1000;
 
-//      int increase = 0;
-//      int decrease = 0;
+      //      int increase = 0;
+      //      int decrease = 0;
 
       for (int test = 0; test < tests; test++)
       {
@@ -325,10 +334,10 @@ public class ConvexPolygonToolsTest
          int desiredNumberOfVertices = random.nextInt(10);
          FrameConvexPolygon2D originalPolygon = new FrameConvexPolygon2D(polygon);
 
-//         if (desiredNumberOfVertices > polygon.getNumberOfVertices())
-//            increase++;
-//         if (desiredNumberOfVertices < polygon.getNumberOfVertices())
-//            decrease++;
+         //         if (desiredNumberOfVertices > polygon.getNumberOfVertices())
+         //            increase++;
+         //         if (desiredNumberOfVertices < polygon.getNumberOfVertices())
+         //            decrease++;
 
          ConvexPolygonTools.limitVerticesConservative(polygon, desiredNumberOfVertices);
 
@@ -344,8 +353,8 @@ public class ConvexPolygonToolsTest
             assertTrue(originalPolygon.distance(vertex) <= 4.0e-7, "Expecting less than 3.0e-7: " + originalPolygon.distance(vertex));
       }
 
-//      System.out.println("Tested " + increase + " point increases");
-//      System.out.println("Tested " + decrease + " point decreases");
+      //      System.out.println("Tested " + increase + " point increases");
+      //      System.out.println("Tested " + decrease + " point decreases");
    }
 
    private void plotPolygon(FrameConvexPolygon2D polygonWithLimitedVertices, int desiredNumberOfVertices, FrameConvexPolygon2D originalPolygon)
@@ -379,15 +388,19 @@ public class ConvexPolygonToolsTest
    @Test
    public void testDistanceBetweenPolygonsNegativeAngle()
    {
-      assertMinimumDistancePointsMatchExpected(new double[] {0, 5, 2, -2, 2, 0}, new double[] {2.5, 1, 2.8, 1, 3, .9, 4, 0, 3, -1},
-                                               new double[] {2, 0, 46.0 / 17, 6.0 / 34}, .001);
+      assertMinimumDistancePointsMatchExpected(new double[] {0, 5, 2, -2, 2, 0},
+                                               new double[] {2.5, 1, 2.8, 1, 3, .9, 4, 0, 3, -1},
+                                               new double[] {2, 0, 46.0 / 17, 6.0 / 34},
+                                               .001);
    }
 
    @Test
    public void testDistanceBetweenPolygonsThirdQuadrant()
    {
-      assertMinimumDistancePointsMatchExpected(new double[] {-2, -1, -1, -1, -1, -2}, new double[] {-2, -2, -2, -3, -4, -4, -4, -2},
-                                               new double[] {-1.5, -1.5, -2, -2}, .001);
+      assertMinimumDistancePointsMatchExpected(new double[] {-2, -1, -1, -1, -1, -2},
+                                               new double[] {-2, -2, -2, -3, -4, -4, -4, -2},
+                                               new double[] {-1.5, -1.5, -2, -2},
+                                               .001);
    }
 
    @Test
@@ -399,14 +412,18 @@ public class ConvexPolygonToolsTest
    @Test
    public void testDistanceBetweenPolygonsParalellEdges()
    {
-      assertMinimumDistancePointsMatchExpected(new double[] {0, 0, 0, 1, 1, 0, 2, 1, 1, 2}, new double[] {0, 3, 2, 3, -1, 4, 3, 4}, new double[] {1, 2, 1, 3},
+      assertMinimumDistancePointsMatchExpected(new double[] {0, 0, 0, 1, 1, 0, 2, 1, 1, 2},
+                                               new double[] {0, 3, 2, 3, -1, 4, 3, 4},
+                                               new double[] {1, 2, 1, 3},
                                                .001);
    }
 
    @Test
    public void testDistanceBetweenPolygonsMultiplePossibleAnswers()
    {
-      assertMinimumDistancePointsMatchExpected(new double[] {0, 0, 0, 1, 1, 0, 2, 1, 1, 2}, new double[] {3, 2, 2, 3, 2, 4, 4, 2}, new double[] {1, 2, 2, 3},
+      assertMinimumDistancePointsMatchExpected(new double[] {0, 0, 0, 1, 1, 0, 2, 1, 1, 2},
+                                               new double[] {3, 2, 2, 3, 2, 4, 4, 2},
+                                               new double[] {1, 2, 2, 3},
                                                .001);
    }
 
@@ -414,22 +431,28 @@ public class ConvexPolygonToolsTest
    @Test
    public void testDistanceBetweenPolygonsTwoVisiblePoints()
    {
-      assertMinimumDistancePointsMatchExpected(new double[] {0, 0, 0, 1, 1, 0, 2, 1, 1, 2}, new double[] {4, 1, 1, 4, 2, 4, 4, 2}, new double[] {2, 1, 3, 2},
+      assertMinimumDistancePointsMatchExpected(new double[] {0, 0, 0, 1, 1, 0, 2, 1, 1, 2},
+                                               new double[] {4, 1, 1, 4, 2, 4, 4, 2},
+                                               new double[] {2, 1, 3, 2},
                                                .001);
    }
 
    @Test
    public void testDistanceBetweenPolygonsTwoVisiblePoints2()
    {
-      assertMinimumDistancePointsMatchExpected(new double[] {0, 0, 0, 1, 1, 0, 2, 1, 1, 2}, new double[] {4, 1, 1.5, 4, 2, 4, 4, 2},
-                                               new double[] {2, 1, 194.0 / 61, 121.0 / 61}, .001);
+      assertMinimumDistancePointsMatchExpected(new double[] {0, 0, 0, 1, 1, 0, 2, 1, 1, 2},
+                                               new double[] {4, 1, 1.5, 4, 2, 4, 4, 2},
+                                               new double[] {2, 1, 194.0 / 61, 121.0 / 61},
+                                               .001);
    }
 
    @Test
    public void testDistanceBetweenPolygonsOneOfTheAnglesIsZero()
    {
-      assertMinimumDistancePointsMatchExpected(new double[] {0, 0, 0, 1, 1, 0, 2, 1, 1, 2}, new double[] {0, 2, 0, 3, 1, 3, .8, 2},
-                                               new double[] {.9, 1.9, .8, 2}, .001);
+      assertMinimumDistancePointsMatchExpected(new double[] {0, 0, 0, 1, 1, 0, 2, 1, 1, 2},
+                                               new double[] {0, 2, 0, 3, 1, 3, .8, 2},
+                                               new double[] {.9, 1.9, .8, 2},
+                                               .001);
    }
 
    @Test
@@ -441,22 +464,28 @@ public class ConvexPolygonToolsTest
    @Test
    public void testDistanceBetweenPolygonsSharedPoint()
    {
-      assertMinimumDistancePointsMatchExpected(new double[] {0, 0, 0, 1, 1, 0, 2, 1, 1, 2}, new double[] {0, 2, 0, 3, 1, 3, 1, 2}, new double[] {1, 2, 1, 2},
+      assertMinimumDistancePointsMatchExpected(new double[] {0, 0, 0, 1, 1, 0, 2, 1, 1, 2},
+                                               new double[] {0, 2, 0, 3, 1, 3, 1, 2},
+                                               new double[] {1, 2, 1, 2},
                                                .001);
    }
 
    @Test
    public void testDistanceBetweenPolygonsPointOnEdge()
    {
-      assertMinimumDistancePointsMatchExpected(new double[] {0, 0, 0, 1, 1, 0, 2, 1, 1, 2}, new double[] {0, 2, 0, 3, 1, 3, .5, 1.5},
-                                               new double[] {.5, 1.5, .5, 1.5}, .001);
+      assertMinimumDistancePointsMatchExpected(new double[] {0, 0, 0, 1, 1, 0, 2, 1, 1, 2},
+                                               new double[] {0, 2, 0, 3, 1, 3, .5, 1.5},
+                                               new double[] {.5, 1.5, .5, 1.5},
+                                               .001);
    }
 
    @Test
    public void testDistanceBetweenPolygonsNegativeAngle2()
    {
-      assertMinimumDistancePointsMatchExpected(new double[] {0, 0, 0, 1, 1, 0, 2, 1, 1, 2}, new double[] {0, 2, 0, 3, 1, 3, .4, 1.5},
-                                               new double[] {.45, 1.45, .4, 1.5}, .001);
+      assertMinimumDistancePointsMatchExpected(new double[] {0, 0, 0, 1, 1, 0, 2, 1, 1, 2},
+                                               new double[] {0, 2, 0, 3, 1, 3, .4, 1.5},
+                                               new double[] {.45, 1.45, .4, 1.5},
+                                               .001);
    }
 
    @Test
@@ -525,7 +554,8 @@ public class ConvexPolygonToolsTest
 
          ConvexPolygon2D intersectionPolygon = new ConvexPolygon2D();
 
-         assertEquals(pointThatDefinesThePolygon.distance(arbitraryPoint0), polygonWithOnePoint.getClosestVertexCopy(arbitraryPoint0).distance(arbitraryPoint0),
+         assertEquals(pointThatDefinesThePolygon.distance(arbitraryPoint0),
+                      polygonWithOnePoint.getClosestVertexCopy(arbitraryPoint0).distance(arbitraryPoint0),
                       epsilon);
          assertEquals(0.0, polygonWithOnePoint.getArea(), epsilon);
          assertTrue(polygonWithOnePoint.getBoundingBox().getMaxPoint().equals(pointThatDefinesThePolygon));
@@ -628,7 +658,8 @@ public class ConvexPolygonToolsTest
 
          // one line tests
          assertEquals(Math.min(pointThatDefinesThePolygon0.distance(arbitraryPoint0), pointThatDefinesThePolygon1.distance(arbitraryPoint0)),
-                      polygonWithTwoPoints.getClosestVertexCopy(arbitraryPoint0).distance(arbitraryPoint0), epsilon);
+                      polygonWithTwoPoints.getClosestVertexCopy(arbitraryPoint0).distance(arbitraryPoint0),
+                      epsilon);
          assertEquals(0.0, polygonWithTwoPoints.getArea(), epsilon);
          Point2D minPoint = new Point2D(Math.min(pointThatDefinesThePolygon0.getX(), pointThatDefinesThePolygon1.getX()),
                                         Math.min(pointThatDefinesThePolygon0.getY(), pointThatDefinesThePolygon1.getY()));
@@ -638,7 +669,9 @@ public class ConvexPolygonToolsTest
          assertTrue(polygonWithTwoPoints.getBoundingBox().getMaxPoint().equals(maxPoint));
          assertTrue(polygonWithTwoPoints.getCentroid().equals(lineSegmentThatDefinesThePolygon.midpoint()));
          assertEquals(2, polygonWithTwoPoints.getNumberOfVertices());
-         assertEqualsInEitherOrder(pointThatDefinesThePolygon0, pointThatDefinesThePolygon1, polygonWithTwoPoints.getVertex(0),
+         assertEqualsInEitherOrder(pointThatDefinesThePolygon0,
+                                   pointThatDefinesThePolygon1,
+                                   polygonWithTwoPoints.getVertex(0),
                                    polygonWithTwoPoints.getVertex(1));
          assertFalse(polygonWithTwoPoints.isPointInside(arbitraryPoint0));
          assertFalse(ConvexPolygon2dCalculator.isPolygonInside(sparePolygon, polygonWithTwoPoints));
@@ -657,7 +690,9 @@ public class ConvexPolygonToolsTest
          assertEqualsInEitherOrder(edgeIndex, polygonWithTwoPoints.getNextVertexIndex(edgeIndex), 0, 1);
 
          // getCounterClockwiseOrderedListOfPointsCopy
-         assertEqualsInEitherOrder(polygonWithTwoPoints.getVertexCCW(0), polygonWithTwoPoints.getVertexCCW(1), pointThatDefinesThePolygon0,
+         assertEqualsInEitherOrder(polygonWithTwoPoints.getVertexCCW(0),
+                                   polygonWithTwoPoints.getVertexCCW(1),
+                                   pointThatDefinesThePolygon0,
                                    pointThatDefinesThePolygon1);
 
          // getLineOfSightVertices
@@ -740,8 +775,10 @@ public class ConvexPolygonToolsTest
          else if (expectedIntersectionWithSparePolygon.length == 2)
          {
             assertTrue(actualIntersectionWithSparePolygon.getNumberOfVertices() == 2);
-            assertEqualsInEitherOrder(expectedIntersectionWithSparePolygon[0], expectedIntersectionWithSparePolygon[1],
-                                      actualIntersectionWithSparePolygon.getVertex(0), actualIntersectionWithSparePolygon.getVertex(1));
+            assertEqualsInEitherOrder(expectedIntersectionWithSparePolygon[0],
+                                      expectedIntersectionWithSparePolygon[1],
+                                      actualIntersectionWithSparePolygon.getVertex(0),
+                                      actualIntersectionWithSparePolygon.getVertex(1));
          }
          else
          {
@@ -787,7 +824,8 @@ public class ConvexPolygonToolsTest
             assertTrue(sparePolygon.intersectionWith(lineSegmentThatDefinesThePolygon)[0].epsilonEquals(polygonIntersection.getVertex(0), epsilon));
          else if (polygonIntersection.getNumberOfVertices() == 2)
             assertEqualsInEitherOrder(sparePolygon.intersectionWith(lineSegmentThatDefinesThePolygon)[0],
-                                      sparePolygon.intersectionWith(lineSegmentThatDefinesThePolygon)[1], polygonIntersection.getVertex(0),
+                                      sparePolygon.intersectionWith(lineSegmentThatDefinesThePolygon)[1],
+                                      polygonIntersection.getVertex(0),
                                       polygonIntersection.getVertex(1));
          else
             fail();
@@ -1074,16 +1112,30 @@ public class ConvexPolygonToolsTest
       int numberOfPoints = 3; //20;
       int numberOfPolygons = 30;
 
-      ArrayList<FrameConvexPolygon2D> randomPolygonsOne = ConvexPolygon2dTestHelpers.generateRandomPolygons(random, ReferenceFrame.getWorldFrame(), centerXMin,
-                                                                                                            centerXMax, centerYMin, centerYMax, widthMax,
-                                                                                                            heightMax, numberOfPoints, numberOfPolygons);
+      ArrayList<FrameConvexPolygon2D> randomPolygonsOne = ConvexPolygon2dTestHelpers.generateRandomPolygons(random,
+                                                                                                            ReferenceFrame.getWorldFrame(),
+                                                                                                            centerXMin,
+                                                                                                            centerXMax,
+                                                                                                            centerYMin,
+                                                                                                            centerYMax,
+                                                                                                            widthMax,
+                                                                                                            heightMax,
+                                                                                                            numberOfPoints,
+                                                                                                            numberOfPolygons);
 
       centerXMin = 1.5;
       centerXMax = 2.0;
 
-      ArrayList<FrameConvexPolygon2D> randomPolygonsTwo = ConvexPolygon2dTestHelpers.generateRandomPolygons(random, ReferenceFrame.getWorldFrame(), centerXMin,
-                                                                                                            centerXMax, centerYMin, centerYMax, widthMax,
-                                                                                                            heightMax, numberOfPoints, numberOfPolygons);
+      ArrayList<FrameConvexPolygon2D> randomPolygonsTwo = ConvexPolygon2dTestHelpers.generateRandomPolygons(random,
+                                                                                                            ReferenceFrame.getWorldFrame(),
+                                                                                                            centerXMin,
+                                                                                                            centerXMax,
+                                                                                                            centerYMin,
+                                                                                                            centerYMax,
+                                                                                                            widthMax,
+                                                                                                            heightMax,
+                                                                                                            numberOfPoints,
+                                                                                                            numberOfPolygons);
       ConvexPolygonTools convexPolygonTools = new ConvexPolygonTools();
 
       boolean success = true;
@@ -1239,8 +1291,16 @@ public class ConvexPolygonToolsTest
       int numberOfPoints = 20;
       int numberOfPolygons = 30;
 
-      ArrayList<FrameConvexPolygon2D> randomPolygons = ConvexPolygon2dTestHelpers.generateRandomPolygons(random, zUpFrame, xMin, xMax, yMin, yMax, widthMax,
-                                                                                                         heightMax, numberOfPoints, numberOfPolygons);
+      ArrayList<FrameConvexPolygon2D> randomPolygons = ConvexPolygon2dTestHelpers.generateRandomPolygons(random,
+                                                                                                         zUpFrame,
+                                                                                                         xMin,
+                                                                                                         xMax,
+                                                                                                         yMin,
+                                                                                                         yMax,
+                                                                                                         widthMax,
+                                                                                                         heightMax,
+                                                                                                         numberOfPoints,
+                                                                                                         numberOfPolygons);
 
       FrameGeometryTestFrame testFrame = null;
       FrameGeometry2dPlotter plotter = null;
@@ -1353,6 +1413,140 @@ public class ConvexPolygonToolsTest
    }
 
    @Test
+   public void testComputeMinimumDistancePointsWithExamples()
+   {
+      Random random = new Random(1561);
+      int iterations = 1;
+      double epsilon = 1.0e-12;
+      ConvexPolygonTools tools = new ConvexPolygonTools();
+
+      Point2D actualP1 = new Point2D();
+      Point2D actualP2 = new Point2D();
+      Point2D expectedP1 = new Point2D();
+      Point2D expectedP2 = new Point2D();
+
+      for (int i = 0; i < iterations; i++)
+      { // 2 rectangles, not overlapping, and they're closest at a vertex
+         boolean mirrorX = random.nextBoolean();
+         boolean mirrorY = random.nextBoolean();
+         Vector2D size1 = EuclidCoreRandomTools.nextVector2D(random, 0.0, 1.0);
+         Vector2D size2 = EuclidCoreRandomTools.nextVector2D(random, 0.0, 1.0);
+
+         Vector2D separation = EuclidCoreRandomTools.nextVector2D(random, 0.0, 1.0);
+         Vector2D translation = EuclidCoreRandomTools.nextVector2D(random);
+         RigidBodyTransform transform = EuclidCoreRandomTools.nextRigidBodyTransform2D(random);
+
+         ConvexPolygon2D rect1 = new ConvexPolygon2D();
+         rect1.addVertex(0, 0);
+         rect1.addVertex(0, size1.getY());
+         rect1.addVertex(size1.getX(), size1.getY());
+         rect1.addVertex(size1.getX(), 0.0);
+         rect1.update();
+         rect1.translate(translation);
+
+         ConvexPolygon2D rect2 = new ConvexPolygon2D();
+         rect2.addVertex(0, 0);
+         rect2.addVertex(0, size2.getY());
+         rect2.addVertex(size2.getX(), size2.getY());
+         rect2.addVertex(size2.getX(), 0.0);
+         rect2.update();
+         rect2.translate(size1);
+         rect2.translate(separation);
+         rect2.translate(translation);
+
+         expectedP1.add(size1, translation);
+         expectedP2.add(expectedP1, separation);
+
+         for (int j = 0; j < rect1.getNumberOfVertices(); j++)
+         {
+            Point2DBasics v = rect1.getVertexUnsafe(j);
+            if (mirrorX)
+               v.setX(-v.getX());
+            if (mirrorY)
+               v.setY(-v.getY());
+         }
+
+         for (int j = 0; j < rect2.getNumberOfVertices(); j++)
+         {
+            Point2DBasics v = rect2.getVertexUnsafe(j);
+            if (mirrorX)
+               v.setX(-v.getX());
+            if (mirrorY)
+               v.setY(-v.getY());
+         }
+
+         if (mirrorX)
+         {
+            expectedP1.setX(-expectedP1.getX());
+            expectedP2.setX(-expectedP2.getX());
+         }
+
+         if (mirrorY)
+         {
+            expectedP1.setY(-expectedP1.getY());
+            expectedP2.setY(-expectedP2.getY());
+         }
+
+         tools.computeMinimumDistancePoints(rect1, rect2, actualP1, actualP2);
+         EuclidCoreTestTools.assertTuple2DEquals(expectedP1, actualP1, epsilon);
+         EuclidCoreTestTools.assertTuple2DEquals(expectedP2, actualP2, epsilon);
+
+         rect1.applyTransform(transform);
+         rect2.applyTransform(transform);
+         expectedP1.applyTransform(transform);
+         expectedP2.applyTransform(transform);
+
+         tools.computeMinimumDistancePoints(rect1, rect2, actualP1, actualP2);
+         EuclidCoreTestTools.assertTuple2DEquals(expectedP1, actualP1, epsilon);
+         EuclidCoreTestTools.assertTuple2DEquals(expectedP2, actualP2, epsilon);
+      }
+
+      //      for (int i = 0; i < iterations; i++)
+      //      { // 2 rectangles, not overlapping, and they're closest at a vertex-edge combination
+      //         Vector2D size1 = EuclidCoreRandomTools.nextVector2D(random, 0.0, 1.0);
+      //         Vector2D size2 = EuclidCoreRandomTools.nextVector2D(random, 0.0, 1.0);
+      //
+      //         Vector2D separation = EuclidCoreRandomTools.nextVector2D(random, 0.0, 1.0);
+      //         Vector2D translation = EuclidCoreRandomTools.nextVector2D(random);
+      ////         RigidBodyTransform transform = EuclidCoreRandomTools.nextRigidBodyTransform2D(random);
+      //
+      //         ConvexPolygon2D rect1 = new ConvexPolygon2D();
+      //         rect1.addVertex(0, 0);
+      //         rect1.addVertex(0, size1.getY());
+      //         rect1.addVertex(size1.getX(), size1.getY());
+      //         rect1.addVertex(size1.getX(), 0.0);
+      //         rect1.update();
+      //         rect1.translate(translation);
+      //
+      //         ConvexPolygon2D rect2 = new ConvexPolygon2D();
+      //         rect2.addVertex(0, 0);
+      //         rect2.addVertex(0, size2.getY());
+      //         rect2.addVertex(size2.getX(), size2.getY());
+      //         rect2.addVertex(size2.getX(), 0.0);
+      //         rect2.update();
+      //         rect2.translate(size1);
+      //         rect2.translate(separation);
+      //         rect2.translate(translation);
+      //
+      //         expectedP1.add(size1, translation);
+      //         expectedP2.add(expectedP1, separation);
+      //
+      //         tools.computeMinimumDistancePoints(rect1, rect2, actualP1, actualP2);
+      //         EuclidCoreTestTools.assertTuple2DEquals(expectedP1, actualP1, epsilon);
+      //         EuclidCoreTestTools.assertTuple2DEquals(expectedP2, actualP2, epsilon);
+      //
+      ////         rect1.applyTransform(transform);
+      ////         rect2.applyTransform(transform);
+      ////         expectedP1.applyTransform(transform);
+      ////         expectedP2.applyTransform(transform);
+      ////
+      ////         tools.computeMinimumDistancePoints(rect1, rect2, actualP1, actualP2);
+      ////         EuclidCoreTestTools.assertTuple2DEquals(expectedP1, actualP1, epsilon);
+      ////         EuclidCoreTestTools.assertTuple2DEquals(expectedP2, actualP2, epsilon);
+      //      }
+   }
+
+   @Test
    public void testComputeMinimumDistancePointsBug()
    {
       ConvexPolygon2D polygon1 = new ConvexPolygon2D(Vertex2DSupplier.asVertex2DSupplier(new Point2D(-0.964173902597, 0.063152759605),
@@ -1360,10 +1554,10 @@ public class ConvexPolygonToolsTest
                                                                                          new Point2D(0.742755947614, -0.308890986251),
                                                                                          new Point2D(0.035576039489, -0.462323265823),
                                                                                          new Point2D(-0.671457454488, -0.308217700493)));
-      ConvexPolygon2D polygon2 = new ConvexPolygon2D(Vertex2DSupplier.asVertex2DSupplier(new Point2D(-2.343969106435, -1.557740484682 ),
-                                                                                         new Point2D(-2.343472477274, -0.507264050627 ),
-                                                                                         new Point2D(-0.542724054207, -0.508121359902 ),
-                                                                                         new Point2D(-0.543220683369, -1.558597793958 )));
+      ConvexPolygon2D polygon2 = new ConvexPolygon2D(Vertex2DSupplier.asVertex2DSupplier(new Point2D(-2.343969106435, -1.557740484682),
+                                                                                         new Point2D(-2.343472477274, -0.507264050627),
+                                                                                         new Point2D(-0.542724054207, -0.508121359902),
+                                                                                         new Point2D(-0.543220683369, -1.558597793958)));
       double epsilon = 0.01;
       new ConvexPolygonTools().computeMinimumDistancePoints(polygon1, polygon2, epsilon, new Point2D(), new Point2D());
    }
@@ -1396,8 +1590,12 @@ public class ConvexPolygonToolsTest
       }
    }
 
-   private void assertEqualsInAnyOrder(Point2DReadOnly expected0, Point2DReadOnly expected1, Point2DReadOnly expected2, Point2DReadOnly actual0,
-                                       Point2DReadOnly actual1, Point2DReadOnly actual2)
+   private void assertEqualsInAnyOrder(Point2DReadOnly expected0,
+                                       Point2DReadOnly expected1,
+                                       Point2DReadOnly expected2,
+                                       Point2DReadOnly actual0,
+                                       Point2DReadOnly actual1,
+                                       Point2DReadOnly actual2)
    {
       if (expected0.equals(actual0) && expected1.equals(actual1))
          assertTrue(expected2.equals(actual2));
