@@ -1,5 +1,7 @@
 package us.ihmc.stateEstimation.humanoid.kinematicsBasedStateEstimation;
 
+import static us.ihmc.stateEstimation.humanoid.kinematicsBasedStateEstimation.centerOfMassEstimator.WrenchBasedMomentumStateUpdater.wrapFootSwitchInterfaces;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -29,6 +31,7 @@ import us.ihmc.sensorProcessing.stateEstimation.IMUSensorReadOnly;
 import us.ihmc.sensorProcessing.stateEstimation.StateEstimatorParameters;
 import us.ihmc.sensorProcessing.stateEstimation.evaluation.FullInverseDynamicsStructure;
 import us.ihmc.stateEstimation.humanoid.StateEstimatorController;
+import us.ihmc.stateEstimation.humanoid.kinematicsBasedStateEstimation.centerOfMassEstimator.WrenchBasedMomentumStateUpdater;
 import us.ihmc.yoVariables.parameters.BooleanParameter;
 import us.ihmc.yoVariables.providers.BooleanProvider;
 import us.ihmc.yoVariables.registry.YoRegistry;
@@ -197,24 +200,30 @@ public class DRCKinematicsBasedStateEstimator implements StateEstimatorControlle
 
       if (ESTIMATE_COM_STATE)
       {
-         if (USED_DISTRIBUTED_IMU_COM_ESTIMATOR)
-         {
-            momentumStateUpdater = new DistributedIMUBasedCenterOfMassStateUpdater(rootJoint,
-                                                                                   sensorOutputMap.getIMUOutputs(),
-                                                                                   pelvisLinearStateUpdater.getCurrentListOfTrustedFeet(),
-                                                                                   estimatorDT,
-                                                                                   gravitationalAcceleration,
-                                                                                   estimatorCenterOfMassDataHolderToUpdate);
-         }
-         else
-         {
-            momentumStateUpdater = new SimpleMomentumStateUpdater(rootJoint,
-                                                                  gravitationalAcceleration,
-                                                                  stateEstimatorParameters,
-                                                                  footSwitches,
-                                                                  estimatorCenterOfMassDataHolderToUpdate,
-                                                                  yoGraphicsListRegistry);
-         }
+         momentumStateUpdater = new WrenchBasedMomentumStateUpdater(rootJoint,
+                                                                    wrapFootSwitchInterfaces(footSwitchList),
+                                                                    estimatorDT,
+                                                                    gravitationalAcceleration,
+                                                                    estimatorCenterOfMassDataHolderToUpdate);
+
+         //         if (USED_DISTRIBUTED_IMU_COM_ESTIMATOR)
+         //         {
+         //            momentumStateUpdater = new DistributedIMUBasedCenterOfMassStateUpdater(rootJoint,
+         //                                                                                   sensorOutputMap.getIMUOutputs(),
+         //                                                                                   pelvisLinearStateUpdater.getCurrentListOfTrustedFeet(),
+         //                                                                                   estimatorDT,
+         //                                                                                   gravitationalAcceleration,
+         //                                                                                   estimatorCenterOfMassDataHolderToUpdate);
+         //         }
+         //         else
+         //         {
+         //            momentumStateUpdater = new SimpleMomentumStateUpdater(rootJoint,
+         //                                                                  gravitationalAcceleration,
+         //                                                                  stateEstimatorParameters,
+         //                                                                  footSwitches,
+         //                                                                  estimatorCenterOfMassDataHolderToUpdate,
+         //                                                                  yoGraphicsListRegistry);
+         //         }
          registry.addChild(momentumStateUpdater.getRegistry());
       }
       else
