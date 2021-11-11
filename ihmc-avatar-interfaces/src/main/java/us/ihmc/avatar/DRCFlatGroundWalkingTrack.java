@@ -152,8 +152,8 @@ public class DRCFlatGroundWalkingTrack
                                                                                                     wristForceSensorNames, sixDOFForceTorqueSensorNames, highLevelControllerParameters,
                                                                                                     walkingControllerParameters,
                                                                                                     pushRecoveryControllerParameters,
+                                                                                                    copTrajectoryParameters,
                                                                                                     splitFractionParameters);
-                                                                                                    copTrajectoryParameters);
       setupHighLevelStates(controllerFactory, feetForceSensorNames, highLevelControllerParameters.getFallbackControllerState());
       controllerFactory.setHeadingAndVelocityEvaluationScriptParameters(walkingScriptParameters);
       controllerFactory.createControllerNetworkSubscriber(model.getSimpleRobotName(), realtimeROS2Node);
