@@ -128,17 +128,22 @@ public class HighLevelHumanoidControllerFactory implements CloseableAndDisposabl
    public HighLevelHumanoidControllerFactory(ContactableBodiesFactory<RobotSide> contactableBodiesFactory, SideDependentList<String> footForceSensorNames,
 									           SideDependentList<String> footContactSensorNames, SideDependentList<String> wristSensorNames,
 									           HighLevelControllerParameters highLevelControllerParameters,
-									           WalkingControllerParameters walkingControllerParameters, CoPTrajectoryParameters copTrajectoryParameters)
+									           WalkingControllerParameters walkingControllerParameters,
+	                                             PushRecoveryControllerParameters pushRecoveryControllerParameters, CoPTrajectoryParameters copTrajectoryParameters)
    {
 	   this(contactableBodiesFactory, footForceSensorNames,footContactSensorNames, wristSensorNames, null,
-            highLevelControllerParameters, walkingControllerParameters, copTrajectoryParameters);
+            highLevelControllerParameters, walkingControllerParameters, pushRecoveryControllerParameters, copTrajectoryParameters);
    }
    
-   public HighLevelHumanoidControllerFactory(ContactableBodiesFactory<RobotSide> contactableBodiesFactory, SideDependentList<String> footForceSensorNames,
-                                             SideDependentList<String> footContactSensorNames, SideDependentList<String> wristSensorNames,
+   
+   public HighLevelHumanoidControllerFactory(ContactableBodiesFactory<RobotSide> contactableBodiesFactory,
+                                             SideDependentList<String> footForceSensorNames,
+                                             SideDependentList<String> footContactSensorNames,
+                                             SideDependentList<String> wristSensorNames,
                                              ArrayList<String> sixDOFForceTorqueSensorNames,
                                              HighLevelControllerParameters highLevelControllerParameters,
                                              WalkingControllerParameters walkingControllerParameters,
+                                             PushRecoveryControllerParameters pushRecoveryControllerParameters,
                                              CoPTrajectoryParameters copTrajectoryParameters)
    {
       this(contactableBodiesFactory,
@@ -148,6 +153,7 @@ public class HighLevelHumanoidControllerFactory implements CloseableAndDisposabl
            sixDOFForceTorqueSensorNames,
            highLevelControllerParameters,
            walkingControllerParameters,
+           pushRecoveryControllerParameters,
            copTrajectoryParameters,
            new DefaultSplitFractionCalculatorParameters());
    }
@@ -159,7 +165,8 @@ public class HighLevelHumanoidControllerFactory implements CloseableAndDisposabl
                                              HighLevelControllerParameters highLevelControllerParameters,
                                              WalkingControllerParameters walkingControllerParameters,
                                              PushRecoveryControllerParameters pushRecoveryControllerParameters,
-                                             CoPTrajectoryParameters copTrajectoryParameters)
+                                             CoPTrajectoryParameters copTrajectoryParameters,
+                                             SplitFractionCalculatorParametersReadOnly splitFractionCalculatorParameters)
    {
       this(contactableBodiesFactory,
            footForceSensorNames,
