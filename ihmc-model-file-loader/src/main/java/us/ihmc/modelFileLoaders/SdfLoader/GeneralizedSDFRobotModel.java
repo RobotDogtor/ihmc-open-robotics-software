@@ -49,20 +49,6 @@ public class GeneralizedSDFRobotModel implements GraphicsObjectsHolder
       for (SDFLink sdfLink : sdfLinks)
       {
          SDFLinkHolder linkHolder = new SDFLinkHolder(sdfLink);
-         if(this.descriptionMutator != null)
-         {
-            this.descriptionMutator.mutateLinkForModel(this, linkHolder);
-
-            List<SDFSensor> sensors = linkHolder.getSensors();
-            if (sensors != null)
-            {
-               for (SDFSensor sdfSensor : sensors)
-               {
-                  this.descriptionMutator.mutateSensorForModel(this, sdfSensor);
-               }
-            }
-         }
-
          links.put(linkHolder.getName(), linkHolder);
          links.put(ModelFileLoaderConversionsHelper.sanitizeJointName(sdfLink.getName()), linkHolder);
       }
@@ -76,20 +62,6 @@ public class GeneralizedSDFRobotModel implements GraphicsObjectsHolder
             try
             {
                SDFJointHolder jointHolder = new SDFJointHolder(sdfJoint, links.get(parent), links.get(child));
-               if(this.descriptionMutator != null)
-               {
-                  this.descriptionMutator.mutateJointForModel(this, jointHolder);
-
-                  for (SDFContactSensor sdfContactSensor : jointHolder.getContactSensors())
-                  {
-                     this.descriptionMutator.mutateContactSensorForModel(this, sdfContactSensor);
-                  }
-
-                  for (SDFForceSensor sdfForceSensor : jointHolder.getForceSensors())
-                  {
-                     this.descriptionMutator.mutateForceSensorForModel(this, sdfForceSensor);
-                  }
-               }
                joints.put(jointHolder.getName(), jointHolder);
                joints.put(ModelFileLoaderConversionsHelper.sanitizeJointName(sdfJoint.getName()), jointHolder);
             }
@@ -98,11 +70,6 @@ public class GeneralizedSDFRobotModel implements GraphicsObjectsHolder
                System.err.println(e);
             }
          }
-      }
-
-      if(this.descriptionMutator != null)
-      {
-         this.descriptionMutator.mutateModelWithAdditions(this);
       }
 
       // Calculate transformations between joints
@@ -116,10 +83,49 @@ public class GeneralizedSDFRobotModel implements GraphicsObjectsHolder
          link.getValue().calculateCoMOffset();
       }
 
+      for (SDFLinkHolder linkHolder : links.values())
+      {
+         if(this.descriptionMutator != null)
+         {
+            this.descriptionMutator.mutateLinkForModel(this, linkHolder);
+
+            List<SDFSensor> sensors = linkHolder.getSensors();
+            if (sensors != null)
+            {
+               for (SDFSensor sdfSensor : sensors)
+               {
+                  this.descriptionMutator.mutateSensorForModel(this, sdfSensor);
+               }
+            }
+         }
+      }
+
+      for (SDFJointHolder jointHolder : joints.values())
+      {
+         if(this.descriptionMutator != null)
+         {
+            this.descriptionMutator.mutateJointForModel(this, jointHolder);
+
+            for (SDFContactSensor sdfContactSensor : jointHolder.getContactSensors())
+            {
+               this.descriptionMutator.mutateContactSensorForModel(this, sdfContactSensor);
+            }
+
+            for (SDFForceSensor sdfForceSensor : jointHolder.getForceSensors())
+            {
+               this.descriptionMutator.mutateForceSensorForModel(this, sdfForceSensor);
+            }
+         }
+      }
+
+      if(this.descriptionMutator != null)
+      {
+         this.descriptionMutator.mutateModelWithAdditions(this);
+      }
+
       findRootLinks(links);
 
       transformToRoot = ModelFileLoaderConversionsHelper.poseToTransform(model.getPose());
-
    }
 
    private void findRootLinks(HashMap<String, SDFLinkHolder> links)

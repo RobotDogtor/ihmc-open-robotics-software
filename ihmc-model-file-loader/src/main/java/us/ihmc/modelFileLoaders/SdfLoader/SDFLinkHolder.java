@@ -21,6 +21,7 @@ public class SDFLinkHolder
    private double mass;
    private final RigidBodyTransform inertialFrameWithRespectToLinkFrame;
    private final Matrix3D inertia;
+   private final RigidBodyTransform jointFrameToModelFrame = new RigidBodyTransform();
 
    private double contactKp = 0.0;
    private double contactKd = 0.0;
@@ -37,6 +38,7 @@ public class SDFLinkHolder
 
    // Calculated
    private final Vector3D CoMOffset = new Vector3D();
+   private final RigidBodyTransform jointFrameToInertialFrame = new RigidBodyTransform();
 
    public SDFLinkHolder(SDFLink sdfLink)
    {
@@ -93,11 +95,9 @@ public class SDFLinkHolder
       {
          modelFrameToJointFrame.set(joint.getTransformFromChildLink()); // H_4^3
       }
-      RigidBodyTransform jointFrameToModelFrame = new RigidBodyTransform();    // H_3^4
-      jointFrameToModelFrame.setAndInvert(modelFrameToJointFrame);
+      jointFrameToModelFrame.setAndInvert(modelFrameToJointFrame);   // H_3^4
       RigidBodyTransform modelFrameToInertialFrame = inertialFrameWithRespectToLinkFrame;    // H_4^5
 
-      RigidBodyTransform jointFrameToInertialFrame = new RigidBodyTransform();
       jointFrameToInertialFrame.set(jointFrameToModelFrame);
       jointFrameToInertialFrame.multiply(modelFrameToInertialFrame);
 
@@ -119,6 +119,11 @@ public class SDFLinkHolder
       }
 
       this.CoMOffset.set(CoMOffset);
+   }
+
+   public RigidBodyTransform getJointFrameToModelFrame()
+   {
+      return jointFrameToModelFrame;
    }
 
    public ArrayList<SDFJointHolder> getChildren()
