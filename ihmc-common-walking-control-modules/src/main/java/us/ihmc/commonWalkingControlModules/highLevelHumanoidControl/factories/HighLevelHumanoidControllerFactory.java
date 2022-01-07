@@ -573,7 +573,7 @@ public class HighLevelHumanoidControllerFactory implements CloseableAndDisposabl
       /////////////////////////////////////////////////////////////////////////////////////////////
       // Setup the HighLevelHumanoidControllerToolbox /////////////////////////////////////////////
       double omega0 = walkingControllerParameters.getOmega0();
-      controllerToolbox = new HighLevelHumanoidControllerToolbox(fullRobotModel, referenceFrames, footSwitches, wristForceSensors, sixDOFForceTorqueSensors, yoTime, gravityZ, omega0,
+      controllerToolbox = new HighLevelHumanoidControllerToolbox(fullRobotModel, centerOfMassStateProvider, referenceFrames, footSwitches, wristForceSensors, sixDOFForceTorqueSensors, yoTime, gravityZ, omega0,
                                                                  feet, controlDT, updatables, contactablePlaneBodies, yoGraphicsListRegistry, jointsToIgnore);
       controllerToolbox.setSixDOFForceTorqueSensorNameHolder(sixDOFForceTorqueSensorNameHolder);
       controllerToolbox.attachControllerStateChangedListeners(controllerStateChangedListenersToAttach);

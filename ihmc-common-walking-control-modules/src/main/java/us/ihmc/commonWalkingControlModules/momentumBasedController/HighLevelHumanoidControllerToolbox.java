@@ -175,7 +175,8 @@ public class HighLevelHumanoidControllerToolbox implements CenterOfMassStateProv
    
    private SixDOFForceTorqueSensorNameHolder sixDOFForceTorqueSensorNameHolder; 
 
-   public HighLevelHumanoidControllerToolbox(FullHumanoidRobotModel fullRobotModel, CommonHumanoidReferenceFrames referenceFrames,
+   public HighLevelHumanoidControllerToolbox(FullHumanoidRobotModel fullRobotModel, CenterOfMassStateProvider centerOfMassStateProvider,
+                                             CommonHumanoidReferenceFrames referenceFrames,
            SideDependentList<? extends FootSwitchInterface> footSwitches,
            SideDependentList<ForceSensorDataReadOnly> wristForceSensors,
            YoDouble yoTime, double gravityZ, double omega0,
@@ -183,11 +184,12 @@ public class HighLevelHumanoidControllerToolbox implements CenterOfMassStateProv
            List<ContactablePlaneBody> contactableBodies, YoGraphicsListRegistry yoGraphicsListRegistry,
            JointBasics... jointsToIgnore)
 	{
-	   this(fullRobotModel, referenceFrames, footSwitches, wristForceSensors, null, yoTime, gravityZ, omega0,
+	   this(fullRobotModel, centerOfMassStateProvider, referenceFrames, footSwitches, wristForceSensors, null, yoTime, gravityZ, omega0,
 	           feet, controlDT, updatables, contactableBodies, yoGraphicsListRegistry, jointsToIgnore);
 	}
    
-   public HighLevelHumanoidControllerToolbox(FullHumanoidRobotModel fullRobotModel, CommonHumanoidReferenceFrames referenceFrames,
+   public HighLevelHumanoidControllerToolbox(FullHumanoidRobotModel fullRobotModel, CenterOfMassStateProvider centerOfMassStateProvider,
+                                             CommonHumanoidReferenceFrames referenceFrames,
                                              SideDependentList<? extends FootSwitchInterface> footSwitches,
                                              SideDependentList<ForceSensorDataReadOnly> wristForceSensors, ArrayList<ForceSensorDataReadOnly> sixDOFForceTorqueSensors, 
                                              YoDouble yoTime, double gravityZ, double omega0,
