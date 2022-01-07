@@ -70,7 +70,7 @@ public class DRCFlatGroundWalkingTrack
            WalkingProvider.VELOCITY_HEADING_COMPONENT, walkingScriptParameters, null, customControllerState, sixDOFForceTorqueSensorNameHolder); // should always be committed as VELOCITY_HEADING_COMPONENT
    }
    
-   public DRCFlatGroundWalkingTrack(DRCRobotInitialSetup<HumanoidFloatingRootJointRobot> robotInitialSetup, DRCGuiInitialSetup guiInitialSetup, DRCSCSInitialSetup scsInitialSetup,
+   public DRCFlatGroundWalkingTrack(RobotInitialSetup<HumanoidFloatingRootJointRobot> robotInitialSetup, DRCGuiInitialSetup guiInitialSetup, DRCSCSInitialSetup scsInitialSetup,
            boolean useVelocityAndHeadingScript, boolean cheatWithGroundHeightAtForFootstep, DRCRobotModel model,
            HeadingAndVelocityEvaluationScriptParameters walkingScriptParameters)
 	{
