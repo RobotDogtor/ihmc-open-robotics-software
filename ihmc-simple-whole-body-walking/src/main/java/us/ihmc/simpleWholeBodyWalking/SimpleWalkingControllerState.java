@@ -154,9 +154,9 @@ public class SimpleWalkingControllerState extends HighLevelControllerState
 
       FrameVector3D angularMomentum = new FrameVector3D();
       controllerToolbox.getAngularMomentum(angularMomentum);
-      linearMomentumRateControlModule.updateCurrentState(controllerToolbox.getCenterOfMassJacobian().getCenterOfMass(), 
-    		  											 controllerToolbox.getCenterOfMassJacobian().getCenterOfMassVelocity(),
-    		  											 angularMomentum);
+      linearMomentumRateControlModule.updateCurrentState(controllerToolbox.getCenterOfMassPosition(),
+                                                         controllerToolbox.getCenterOfMassVelocity(),
+                                                         angularMomentum);
       linearMomentumRateControlModule.setInputFromWalkingStateMachine(walkingController.getLinearMomentumRateControlModuleInput());
       if (!linearMomentumRateControlModule.computeControllerCoreCommands())
       {
