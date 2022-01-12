@@ -5,7 +5,6 @@ import java.util.List;
 
 import org.ejml.data.DMatrixRMaj;
 
-import us.ihmc.commonWalkingControlModules.capturePoint.lqrControl.LQRJumpMomentumController;
 import us.ihmc.commonWalkingControlModules.capturePoint.lqrControl.LQRMomentumController;
 import us.ihmc.euclid.referenceFrame.ReferenceFrame;
 import us.ihmc.graphicsDescription.yoGraphics.YoGraphicsListRegistry;
@@ -27,7 +26,7 @@ public class SimpleLQRSphereController implements SimpleSphereControllerInterfac
    private final SimpleSphereRobot sphereRobot;
    private final ExternalForcePoint externalForcePoint;
 
-   private final LQRJumpMomentumController lqrMomentumController;
+   private final LQRMomentumController lqrMomentumController;
 
    private final YoFrameVector3D lqrForce = new YoFrameVector3D("lqrForce", ReferenceFrame.getWorldFrame(), registry);
 
@@ -54,7 +53,7 @@ public class SimpleLQRSphereController implements SimpleSphereControllerInterfac
 
       sphereRobot.getScsRobot().setController(this);
 
-      lqrMomentumController = new LQRJumpMomentumController(sphereRobot.getOmega0Provider(), sphereRobot.getTotalMass(), registry);
+      lqrMomentumController = new LQRMomentumController(sphereRobot.getOmega0Provider(), registry);
       
       vizSphere = new SimpleSphereVisualizer(dcmPlan, yoGraphicsListRegistry, sphereRobot, registry);
       
@@ -84,7 +83,7 @@ public class SimpleLQRSphereController implements SimpleSphereControllerInterfac
       sphereRobot.getDesiredDCM().set(dcmPlan.getDesiredDCMPosition());
       sphereRobot.getDesiredDCMVelocity().set(dcmPlan.getDesiredDCMVelocity());
 
-      lqrMomentumController.setVRPTrajectory(dcmPlan.getVRPTrajectories(), dcmPlan.getContactStateProviders());
+      lqrMomentumController.setVRPTrajectory(dcmPlan.getVRPTrajectories());
       sphereRobot.getCenterOfMass().get(currentState);
       sphereRobot.getCenterOfMassVelocity().get(3, currentState);
       lqrMomentumController.computeControlInput(currentState, timeInPhase);
