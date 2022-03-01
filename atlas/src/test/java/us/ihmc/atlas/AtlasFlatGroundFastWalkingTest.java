@@ -9,7 +9,6 @@ import java.util.Objects;
 import org.apache.commons.io.FilenameUtils;
 import org.junit.jupiter.api.Test;
 
-import javafx.application.Application;
 import us.ihmc.atlas.parameters.AtlasCoPTrajectoryParameters;
 import us.ihmc.atlas.parameters.AtlasSwingTrajectoryParameters;
 import us.ihmc.atlas.parameters.AtlasToeOffParameters;
@@ -22,6 +21,7 @@ import us.ihmc.commonWalkingControlModules.configurations.WalkingControllerParam
 import us.ihmc.commonWalkingControlModules.dynamicPlanning.bipedPlanning.CoPTrajectoryParameters;
 import us.ihmc.euclid.tuple3D.Vector3D;
 import us.ihmc.euclid.tuple3D.interfaces.Tuple3DReadOnly;
+import us.ihmc.javafx.ApplicationNoModule;
 import us.ihmc.parameterTuner.guiElements.main.ParameterGuiInterface;
 import us.ihmc.parameterTuner.guiElements.main.ParameterTuningApplication;
 import us.ihmc.parameterTuner.offline.FileInputManager;
@@ -167,7 +167,7 @@ public class AtlasFlatGroundFastWalkingTest extends AvatarFlatGroundFastWalkingT
 
    public static void main(String[] args)
    {
-      Application.launch(AtlasFastWalkingTunerOffline.class, args);
+      ApplicationNoModule.launch(AtlasFastWalkingTunerOffline.class, args);
    }
 
    public static class AtlasFastWalkingTunerOffline extends ParameterTuningApplication
