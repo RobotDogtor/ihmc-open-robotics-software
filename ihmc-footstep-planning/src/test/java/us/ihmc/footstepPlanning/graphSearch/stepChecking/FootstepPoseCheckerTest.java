@@ -1,7 +1,6 @@
 package us.ihmc.footstepPlanning.graphSearch.stepChecking;
 
 import org.junit.jupiter.api.Test;
-import org.lwjgl.Sys;
 import us.ihmc.commonWalkingControlModules.staticReachability.StepReachabilityData;
 import us.ihmc.commonWalkingControlModules.staticReachability.StepReachabilityLatticePoint;
 import us.ihmc.commons.InterpolationTools;
