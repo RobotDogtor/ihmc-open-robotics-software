@@ -265,6 +265,9 @@ public class HumanoidHighLevelControllerManager implements RobotController
       // create controller states
       for (HighLevelControllerStateFactory controllerStateFactory : controllerStateFactories.values())
       {
+         if (controllerStateFactory.getStateEnum() == HighLevelControllerName.PUSH_RECOVERY)
+            continue;
+
          // create the individual state
          HighLevelControllerState highLevelControllerState = controllerStateFactory.getOrCreateControllerState(controllerFactoryHelper);
 
